@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { LayoutDashboard, ShoppingBasket, ShoppingCart, Tag, TrendingUp, AlertTriangle, Search, Plus, Edit, Trash2, Check, RefreshCw, Loader2, User, Bell, Settings } from "lucide-react";
 import Header from "@/components/Header";
 import { createClient } from "@/lib/supabase/client";
+import NotificationManager from "@/components/NotificationManager";
 
 interface AdminProduct {
   id: string;
@@ -66,12 +67,12 @@ function AdminPanelContent() {
   const supabase = createClient();
   const [authLoading, setAuthLoading] = useState(true);
   const [loadingData, setLoadingData] = useState(true);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "products" | "orders" | "coupons">("orders");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "products" | "orders" | "coupons" | "notifications">("orders");
 
   // Sync tab state from query parameters (useful when navigating from profile back to admin)
   useEffect(() => {
     const tabParam = searchParams.get("tab");
-    if (tabParam && ["dashboard", "products", "orders", "coupons"].includes(tabParam)) {
+    if (tabParam && ["dashboard", "products", "orders", "coupons", "notifications"].includes(tabParam)) {
       setActiveTab(tabParam as any);
     }
   }, [searchParams]);
@@ -986,6 +987,7 @@ function AdminPanelContent() {
               { id: "products", label: "Products & Stock", icon: ShoppingBasket },
               { id: "orders", label: "Orders Manager", icon: ShoppingCart },
               { id: "coupons", label: "Coupons", icon: Tag },
+              { id: "notifications", label: "Notifications Center", icon: Bell },
             ].map((tab) => {
               const Icon = tab.icon;
               const isSelected = activeTab === tab.id;
@@ -1625,6 +1627,18 @@ function AdminPanelContent() {
                   ))}
                 </motion.div>
               )}
+
+              {activeTab === "notifications" && (
+                <motion.div
+                  key="notifications-tab"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <NotificationManager />
+                </motion.div>
+              )}
             </AnimatePresence>
           )}
         </div>
@@ -1637,6 +1651,7 @@ function AdminPanelContent() {
           { id: "products", label: "Products", icon: ShoppingBasket },
           { id: "orders", label: "Orders", icon: ShoppingCart },
           { id: "coupons", label: "Coupons", icon: Tag },
+          { id: "notifications", label: "Alerts", icon: Bell },
         ].map((tab) => {
           const Icon = tab.icon;
           const isSelected = activeTab === tab.id;

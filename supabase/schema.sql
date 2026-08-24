@@ -320,6 +320,13 @@ create policy "Users can insert order items"
 create policy "Users can view and manage their own notifications" 
   on public.notifications for all using (auth.uid() = profile_id);
 
+create policy "Admins can manage all notifications" 
+  on public.notifications for all using (
+    exists (
+      select 1 from public.profiles where profiles.id = auth.uid() and profiles.role = 'admin'
+    )
+  );
+
 -- REVIEWS
 create policy "Reviews are viewable by everyone" 
   on public.reviews for select using (true);
