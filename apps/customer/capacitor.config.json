@@ -3,9 +3,9 @@
   "appName": "Veggies",
   "webDir": "out",
   "server": {
-    "url": "https://<your-github-username>.github.io/<repo-name>/customer/",
+    "url": "https://nags-p.github.io/Veggies/customer/",
     "allowNavigation": [
-      "<your-github-username>.github.io"
+      "nags-p.github.io"
     ]
   }
 }
