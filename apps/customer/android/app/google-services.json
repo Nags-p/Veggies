@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "803590753105",
+    "project_id": "veggies-4780d",
+    "storage_bucket": "veggies-4780d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:803590753105:android:5d2e62e05c8de122e5a170",
+        "android_client_info": {
+          "package_name": "com.veggies.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBndtGe_-6bxoQR8cr8Ah4_pDIQN5V0eko"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
