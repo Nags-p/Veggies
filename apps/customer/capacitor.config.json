@@ -1,5 +1,11 @@
 {
   "appId": "com.veggies.app",
   "appName": "Veggies",
-  "webDir": "out"
+  "webDir": "out",
+  "server": {
+    "url": "https://<your-github-username>.github.io/<repo-name>/customer/",
+    "allowNavigation": [
+      "<your-github-username>.github.io"
+    ]
+  }
 }
