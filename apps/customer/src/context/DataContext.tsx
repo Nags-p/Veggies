@@ -1,0 +1,322 @@
+"use client";
+
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { Product } from "@/components/ProductCard";
+
+interface Order {
+  id: string;
+  displayId: string;
+  date: string;
+  items: string;
+  total: number;
+  status: string;
+  payment_method: string;
+  payment_status: string;
+  address: string;
+  discount_amount: number;
+  delivery_fee: number;
+  total_amount: number;
+  coupon_code: string | null;
+  delivery_notes: string | null;
+  order_items: any[];
+  cancel_reason?: string | null;
+}
+
+interface Profile {
+  id: string;
+  full_name: string;
+  phone: string | null;
+  email: string | null;
+  avatar_url: string | null;
+  role: string;
+  created_at: string;
+}
+
+interface Address {
+  id: string;
+  name: string;
+  building_name: string;
+  complete_address: string;
+  is_default: boolean;
+}
+
+interface DataContextType {
+  products: Product[];
+  categories: any[];
+  orders: Order[];
+  profile: Profile | null;
+  addresses: Address[];
+  dbLoading: boolean;
+  ordersLoading: boolean;
+  profileLoading: boolean;
+  refreshProducts: () => Promise<void>;
+  refreshOrders: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
+  updateProfileLocal: (updated: Partial<Profile>) => void;
+  setDbOrdersLocal: React.Dispatch<React.SetStateAction<Order[]>>;
+}
+
+const DataContext = createContext<DataContextType | undefined>(undefined);
+
+export function DataProvider({ children }: { children: React.ReactNode }) {
+  const supabase = createClient();
+
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [addresses, setAddresses] = useState<Address[]>([]);
+
+  const [dbLoading, setDbLoading] = useState(true);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  // Fetch products and categories
+  const fetchProductsAndCategories = async () => {
+    try {
+      const { data: catData } = await supabase.from("categories").select("*").order("name");
+      const { data: prodData } = await supabase.from("products").select("*");
+
+      if (prodData) {
+        const mappedProducts = prodData.map((p: any) => ({
+          id: p.id,
+          category_id: p.category_id,
+          name: p.name,
+          slug: p.slug,
+          price: parseFloat(p.price),
+          original_price: parseFloat(p.original_price),
+          discount: parseFloat(p.discount),
+          weight: p.weight,
+          stock: p.stock,
+          delivery_time: p.delivery_time,
+          images: p.images || [],
+          is_organic: p.is_organic,
+          is_seasonal: p.is_seasonal,
+          is_exotic: p.is_exotic,
+          origin: p.origin,
+          shelf_life: p.shelf_life,
+          benefits: p.benefits,
+          nutrition: p.nutrition,
+        }));
+        setProducts(mappedProducts);
+
+        if (catData) {
+          const iconMap: Record<string, string> = {
+            "fresh-fruits": "🍎",
+            "fresh-vegetables": "🥦",
+            "leafy-vegetables": "🥬",
+            "organic-greens": "🌱",
+            "seasonal-delights": "🍓",
+            "exotic-veggies": "🥑",
+          };
+          const catImages: Record<string, string> = {
+            "fresh-fruits": "https://images.unsplash.com/photo-1619546813926-a78fa6372cd2?q=80&w=150",
+            "fresh-vegetables": "https://images.unsplash.com/photo-1597362925123-77861d3fbac7?q=80&w=150",
+            "organic-greens": "https://images.unsplash.com/photo-1543083115-638c32cd3d58?q=80&w=150",
+            "leafy-vegetables": "https://images.unsplash.com/photo-1596797038530-2c107229654b?q=80&w=150",
+            "seasonal-delights": "https://images.unsplash.com/photo-1553279768-865429fa0078?q=80&w=150",
+            "exotic-veggies": "https://images.unsplash.com/photo-1568584711075-3d021a7c3ecf?q=80&w=150"
+          };
+          const mappedCats = catData.map((c: any) => {
+            const count = mappedProducts.filter((p: any) => p.category_id === c.id).length;
+            return {
+              id: c.id,
+              name: c.name,
+              slug: c.slug,
+              icon: iconMap[c.slug] || "🥦",
+              imageUrl: catImages[c.slug] || "https://images.unsplash.com/photo-1540420773420-3366772f4999?q=80&w=150",
+              dbCategoryId: c.id,
+              count: `${count} ${count === 1 ? 'item' : 'items'}`
+            };
+          });
+          const finalCats = [
+            {
+              id: "all",
+              name: "All",
+              slug: "all",
+              icon: "🥦",
+              imageUrl: "https://images.unsplash.com/photo-1540420773420-3366772f4999?q=80&w=150",
+              dbCategoryId: null,
+              count: `${mappedProducts.length} items`
+            },
+            ...mappedCats
+          ];
+          setCategories(finalCats);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load products/categories:", err);
+    } finally {
+      setDbLoading(false);
+    }
+  };
+
+  // Fetch user profile and addresses
+  const fetchProfileAndAddresses = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setProfile(null);
+        setAddresses([]);
+        setProfileLoading(false);
+        return;
+      }
+
+      // Fetch profile details
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (profileData) {
+        setProfile(profileData);
+      } else {
+        // Fallback profile details
+        setProfile({
+          id: user.id,
+          full_name: user.user_metadata?.full_name || "Customer",
+          phone: user.user_metadata?.phone || null,
+          email: user.email || null,
+          avatar_url: user.user_metadata?.avatar_url || null,
+          role: user.user_metadata?.role || "customer",
+          created_at: user.created_at,
+        });
+      }
+
+      // Fetch addresses
+      const { data: addressData } = await supabase
+        .from("addresses")
+        .select("*")
+        .eq("profile_id", user.id);
+      if (addressData) {
+        setAddresses(addressData);
+      }
+    } catch (err) {
+      console.error("Failed to load profile/addresses:", err);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  // Fetch orders history
+  const fetchOrders = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setOrders([]);
+        setOrdersLoading(false);
+        return;
+      }
+
+      const { data } = await supabase
+        .from("orders")
+        .select("*, order_items(*, products(weight)), addresses(*)")
+        .eq("profile_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (data) {
+        const mappedOrders = data.map((o: any) => {
+          const itemsStr = o.order_items
+            ? o.order_items.map((item: any) => {
+                const weightStr = item.products?.weight ? ` (${item.products.weight})` : "";
+                const cancelStr = item.is_cancelled ? " [Cancelled]" : "";
+                return `${item.name}${weightStr}${cancelStr} (x${item.quantity})`;
+              }).join(", ")
+            : "No items listed";
+
+          return {
+            id: o.id,
+            displayId: o.id.slice(0, 8).toUpperCase(),
+            date: new Date(o.created_at).toLocaleDateString("en-IN", {
+              day: "numeric",
+              month: "short",
+              hour: "2-digit",
+              minute: "2-digit"
+            }),
+            items: itemsStr,
+            total: parseFloat(o.net_amount),
+            status: o.status,
+            payment_method: o.payment_method,
+            payment_status: o.payment_status,
+            address: o.addresses 
+              ? `${o.addresses.building_name}, ${o.addresses.complete_address}`
+              : "Saved Address",
+            discount_amount: parseFloat(o.discount_amount),
+            delivery_fee: parseFloat(o.delivery_fee),
+            total_amount: parseFloat(o.total_amount),
+            coupon_code: o.coupon_code,
+            delivery_notes: o.delivery_notes,
+            cancel_reason: o.cancel_reason,
+            order_items: o.order_items || []
+          };
+        });
+
+        setOrders(mappedOrders);
+      }
+    } catch (err) {
+      console.error("Failed to load orders:", err);
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // Initial fetch of public database content
+    fetchProductsAndCategories();
+    // Initial fetch of authenticated content
+    fetchProfileAndAddresses();
+    fetchOrders();
+
+    // Listen for auth state changes to reload user data
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN") {
+        fetchProfileAndAddresses();
+        fetchOrders();
+      } else if (event === "SIGNED_OUT") {
+        setProfile(null);
+        setAddresses([]);
+        setOrders([]);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const updateProfileLocal = (updatedFields: Partial<Profile>) => {
+    setProfile((prev) => (prev ? { ...prev, ...updatedFields } : null));
+  };
+
+  return (
+    <DataContext.Provider
+      value={{
+        products,
+        categories,
+        orders,
+        profile,
+        addresses,
+        dbLoading,
+        ordersLoading,
+        profileLoading,
+        refreshProducts: fetchProductsAndCategories,
+        refreshOrders: fetchOrders,
+        refreshProfile: fetchProfileAndAddresses,
+        updateProfileLocal,
+        setDbOrdersLocal: setOrders
+      }}
+    >
+      {children}
+    </DataContext.Provider>
+  );
+}
+
+export function useData() {
+  const context = useContext(DataContext);
+  if (!context) {
+    throw new Error("useData must be used within a DataProvider");
+  }
+  return context;
+}

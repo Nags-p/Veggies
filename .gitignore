@@ -1,0 +1,32 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Next.js build output
+.next/
+out/
+
+# Capacitor / Native Android build outputs
+**/android/app/build/
+**/android/.gradle/
+**/android/local.properties
+**/android/captmp/
+**/android/.idea/
+**/*.apk
+.gradle/
+build/
+local.properties
+
+# Environment variables
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini

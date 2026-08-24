@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Veggies</string>
+    <string name="title_activity_main">Veggies</string>
+    <string name="package_name">com.veggies.app</string>
+    <string name="custom_url_scheme">com.veggies.app</string>
+</resources>

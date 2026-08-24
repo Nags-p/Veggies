@@ -1,0 +1,41 @@
+{
+  "name": "veggies-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/customer",
+    "apps/admin",
+    "packages/shared"
+  ],
+  "scripts": {
+    "dev:customer": "npm run dev --workspace=apps/customer",
+    "dev:admin": "npm run dev --workspace=apps/admin",
+    "build:customer": "npm run build --workspace=apps/customer",
+    "build:admin": "npm run build --workspace=apps/admin"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.3.0",
+    "@supabase/supabase-js": "^2.43.4",
+    "clsx": "^2.1.1",
+    "framer-motion": "^11.2.10",
+    "lucide-react": "^0.395.0",
+    "next": "14.2.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@capacitor/push-notifications": "^6.0.0",
+    "@capacitor/local-notifications": "^6.1.0",
+    "@capacitor/app": "^6.0.0",
+    "tailwind-merge": "^2.3.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.0",
+    "@capacitor/core": "^6.1.0",
+    "@capacitor/android": "^6.2.1",
+    "@types/node": "^20.14.2",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.4",
+    "typescript": "^5.4.5"
+  }
+}
