@@ -107,6 +107,14 @@ export default function CapacitorPushNotificationHandler() {
             "pushNotificationActionPerformed",
             (action) => {
               console.log("Push action performed:", action);
+              
+              // Handle generic redirection
+              const redirectTo = action.notification.data?.redirectTo;
+              if (redirectTo) {
+                router.push(redirectTo);
+                return;
+              }
+
               const orderId = action.notification.data?.orderId;
               if (orderId) {
                 router.push(`/orders/track?id=${orderId}`);

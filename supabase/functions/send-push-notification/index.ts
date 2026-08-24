@@ -131,10 +131,12 @@ Deno.serve(async (req) => {
         message: {
           token: token,
           data: {
-            orderId: record.id,
+            orderId: table === "orders" ? record.id : "",
             title: title,
             body: body,
             isNewOrder: isNewOrder ? "true" : "false",
+            redirectTo: record.redirect_to || "",
+            imageUrl: record.image_url || "",
           },
           android: {
             priority: "high",
@@ -148,11 +150,20 @@ Deno.serve(async (req) => {
           title: title,
           body: body,
         };
+
+        if (record.image_url) {
+          fcmPayload.message.notification.image = record.image_url;
+        }
+
         fcmPayload.message.android.notification = {
           click_action: "FCM_PLUGIN_ACTIVITY",
           sound: "default",
           channel_id: "customer_order_alerts",
         };
+
+        if (record.image_url) {
+          fcmPayload.message.android.notification.image = record.image_url;
+        }
       }
 
       try {
