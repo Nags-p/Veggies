@@ -79,10 +79,15 @@ export default function CapacitorPushNotificationHandler() {
                     visibility: 1,
                     vibration: true
                   });
+                  // Show a visual alert directly in the web app UI
+                  if (typeof window !== "undefined") {
+                    alert(`🌟 Veggies Alert: ${notification.title}\n\n${notification.body}`);
+                  }
+
                   await LocalNotifications.schedule({
                     notifications: [
                       {
-                        title: notification.title || "New Notification",
+                        title: `🌟 Veggies Live: ${notification.title || "New Notification"}`,
                         body: notification.body || "",
                         id: Math.floor(Math.random() * 100000),
                         channelId: 'customer_order_alerts',
