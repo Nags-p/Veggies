@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
     console.log("Database webhook payload received:", JSON.stringify(payload));
 
     const { type, table, record, old_record } = payload;
-    if (table !== "orders") {
+    if (table !== "orders" && table !== "notifications") {
       return new Response(JSON.stringify({ error: "Unsupported table" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
@@ -41,7 +41,23 @@ Deno.serve(async (req) => {
     let title = "";
     let body = "";
 
-    if (type === "INSERT") {
+    if (table === "notifications" && type === "INSERT") {
+      // Direct notification inserted: Notify the target recipient
+      title = record.title;
+      body = record.message;
+
+      const { data: recipientProfile, error: recErr } = await supabase
+        .from("profiles")
+        .select("fcm_token")
+        .eq("id", record.profile_id)
+        .single();
+
+      if (recErr) {
+        console.error("Error fetching recipient profile:", recErr);
+      } else if (recipientProfile?.fcm_token) {
+        tokensToSend.push(recipientProfile.fcm_token);
+      }
+    } else if (table === "orders" && type === "INSERT") {
       // New Order: Notify Admins
       title = "New Order Placed!";
       const displayId = record.id.slice(0, 8).toUpperCase();
@@ -126,8 +142,8 @@ Deno.serve(async (req) => {
         },
       };
 
-      // For customer updates (UPDATE), we include the "notification" block so they see standard system notifications easily
-      if (!isNewOrder) {
+      // For customer updates (UPDATE) and manual notifications, we include the "notification" block so they see standard system notifications easily
+      if (!isNewOrder || table === "notifications") {
         fcmPayload.message.notification = {
           title: title,
           body: body,
