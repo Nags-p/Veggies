@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { LayoutDashboard, ShoppingBasket, ShoppingCart, Tag, Settings } from "lucide-react";
+import { LayoutDashboard, ShoppingBasket, ShoppingCart, Users, Tag, Settings } from "lucide-react";
 
 export default function FooterNav() {
   const pathname = usePathname();
@@ -14,6 +14,7 @@ export default function FooterNav() {
     { label: "Dashboard", href: "/?tab=dashboard", tabId: "dashboard", icon: LayoutDashboard },
     { label: "Products", href: "/?tab=products", tabId: "products", icon: ShoppingBasket },
     { label: "Orders", href: "/?tab=orders", tabId: "orders", icon: ShoppingCart },
+    { label: "Customers", href: "/?tab=customers", tabId: "customers", icon: Users },
     { label: "Coupons", href: "/?tab=coupons", tabId: "coupons", icon: Tag },
     { label: "Settings", href: "/settings", tabId: null, icon: Settings },
   ];

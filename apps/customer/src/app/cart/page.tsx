@@ -51,6 +51,7 @@ function CartContent() {
   const [coupons, setCoupons] = useState<any[]>([]);
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [showCouponsList, setShowCouponsList] = useState(false);
+  const [usedCoupons, setUsedCoupons] = useState<string[]>([]);
 
   // Payment Option
   const [paymentMethod, setPaymentMethod] = useState("cod");
@@ -80,9 +81,20 @@ function CartContent() {
               setSelectedAddressId(addrData[0].id);
             }
           }
+
+          // Fetch user's used coupons
+          const { data: userOrders } = await supabase
+            .from("orders")
+            .select("coupon_code")
+            .eq("profile_id", user.id)
+            .neq("status", "cancelled");
+          if (userOrders) {
+            const codes = userOrders.map(o => o.coupon_code).filter(Boolean) as string[];
+            setUsedCoupons(codes);
+          }
         }
       } catch (err) {
-        console.error("Failed to load profile addresses:", err);
+        console.error("Failed to load profile addresses/coupons:", err);
       } finally {
         setAddressLoading(false);
       }
@@ -101,12 +113,19 @@ function CartContent() {
         console.error("Failed to fetch store settings:", err);
       }
 
-      // Load active coupons
+      // Load active coupons (public or customer-assigned)
       try {
-        const { data: couponData } = await supabase
+        const { data: { user } } = await supabase.auth.getUser();
+        let couponQuery = supabase
           .from("coupons")
           .select("*")
           .eq("is_active", true);
+        if (user) {
+          couponQuery = couponQuery.or(`customer_id.is.null,customer_id.eq.${user.id}`);
+        } else {
+          couponQuery = couponQuery.is("customer_id", null);
+        }
+        const { data: couponData } = await couponQuery;
         if (couponData) {
           setCoupons(couponData);
         }
@@ -122,11 +141,14 @@ function CartContent() {
     if (couponParam && coupons.length > 0) {
       const found = coupons.find(c => c.code.toUpperCase() === couponParam.toUpperCase());
       if (found) {
-        // Automatically apply the coupon
-        setAppliedCoupon(found);
+        const alreadyUsed = found.once_per_user && usedCoupons.map(code => code.toUpperCase()).includes(found.code.toUpperCase());
+        if (!alreadyUsed) {
+          // Automatically apply the coupon
+          setAppliedCoupon(found);
+        }
       }
     }
-  }, [couponParam, coupons]);
+  }, [couponParam, coupons, usedCoupons]);
 
   // Listen for iframe map coordinates and reverse-geocode them
   useEffect(() => {
@@ -564,6 +586,9 @@ function CartContent() {
                     <p className="text-[10px] font-bold text-slate-400 text-center py-2">No coupons available right now.</p>
                   ) : (() => {
                     const eligibleOrNearCoupons = coupons.filter((c) => {
+                      if (c.once_per_user && usedCoupons.map(code => code.toUpperCase()).includes(c.code.toUpperCase())) {
+                        return false;
+                      }
                       const isApplicable = subtotal >= c.min_order_value;
                       const amountNeeded = c.min_order_value - subtotal;
                       return isApplicable || (amountNeeded > 0 && amountNeeded <= 150);

@@ -13,6 +13,7 @@ export default function CouponsPage() {
   const { subtotal } = useCart();
 
   const [coupons, setCoupons] = useState<any[]>([]);
+  const [usedCoupons, setUsedCoupons] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [manualCode, setManualCode] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
@@ -21,10 +22,31 @@ export default function CouponsPage() {
     async function loadCoupons() {
       try {
         setLoading(true);
-        const { data, error } = await supabase
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        let couponQuery = supabase
           .from("coupons")
           .select("*")
           .eq("is_active", true);
+
+        if (user) {
+          couponQuery = couponQuery.or(`customer_id.is.null,customer_id.eq.${user.id}`);
+          
+          // Load user's used coupons
+          const { data: userOrders } = await supabase
+            .from("orders")
+            .select("coupon_code")
+            .eq("profile_id", user.id)
+            .neq("status", "cancelled");
+          if (userOrders) {
+            const codes = userOrders.map(o => o.coupon_code).filter(Boolean) as string[];
+            setUsedCoupons(codes);
+          }
+        } else {
+          couponQuery = couponQuery.is("customer_id", null);
+        }
+
+        const { data, error } = await couponQuery;
 
         if (error) throw error;
         if (data) {
@@ -53,6 +75,11 @@ export default function CouponsPage() {
 
     if (!matched) {
       setErrorMsg("Invalid coupon code. Please try another one.");
+      return;
+    }
+
+    if (matched.once_per_user && usedCoupons.map(code => code.toUpperCase()).includes(matched.code.toUpperCase())) {
+      setErrorMsg("You have already redeemed this coupon.");
       return;
     }
 
@@ -167,11 +194,12 @@ export default function CouponsPage() {
                 })
                 .map((c) => {
                   const isEligible = subtotal >= c.min_order_value;
+                  const isUsed = c.once_per_user && usedCoupons.map(code => code.toUpperCase()).includes(c.code.toUpperCase());
                   return (
                     <div
                       key={c.id}
                       className={`bg-white rounded-2xl border p-5 shadow-card transition-all relative overflow-hidden flex flex-col justify-between gap-4 ${
-                        isEligible
+                        isEligible && !isUsed
                           ? "border-slate-100 hover:border-primary/30"
                           : "border-slate-100 opacity-80"
                       }`}
@@ -181,17 +209,23 @@ export default function CouponsPage() {
                         <div className="bg-emerald-50 border border-emerald-100 text-primary px-3 py-1.5 rounded-xl font-black text-xs tracking-wider uppercase w-fit">
                           {c.code}
                         </div>
-                        <button
-                          disabled={!isEligible}
-                          onClick={() => handleApplyCoupon(c.code)}
-                          className={`text-xs font-extrabold px-5 py-2 rounded-xl border transition-all cursor-pointer ${
-                            isEligible
-                              ? "bg-primary border-primary text-white hover:bg-primary-dark shadow-sm hover:scale-105 active:scale-95"
-                              : "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed"
-                          }`}
-                        >
-                          Apply
-                        </button>
+                        {isUsed ? (
+                          <span className="text-[10px] font-black text-slate-450 uppercase bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl">
+                            Used
+                          </span>
+                        ) : (
+                          <button
+                            disabled={!isEligible}
+                            onClick={() => handleApplyCoupon(c.code)}
+                            className={`text-xs font-extrabold px-5 py-2 rounded-xl border transition-all cursor-pointer ${
+                              isEligible
+                                ? "bg-primary border-primary text-white hover:bg-primary-dark shadow-sm hover:scale-105 active:scale-95"
+                                : "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed"
+                            }`}
+                          >
+                            Apply
+                          </button>
+                        )}
                       </div>
 
                       {/* Info Description */}

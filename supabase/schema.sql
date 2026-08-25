@@ -97,9 +97,11 @@ create table public.coupons (
     discount_value numeric(10, 2) not null check (discount_value > 0),
     min_order_value numeric(10, 2) default 0.00 not null check (min_order_value >= 0),
     max_discount numeric(10, 2) check (max_discount > 0),
-    start_date timestamp with time zone not null,
-    end_date timestamp with time zone not null,
+    start_date timestamp with time zone,
+    end_date timestamp with time zone,
     is_active boolean default true not null,
+    once_per_user boolean default false not null,
+    customer_id uuid references public.profiles(id) on delete set null,
     created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 

@@ -52,10 +52,32 @@ export default function CheckoutPage() {
         router.push("/login?redirect=/checkout");
       } else {
         setAuthLoading(false);
+        try {
+          const { data: couponData } = await supabase
+            .from("coupons")
+            .select("*")
+            .eq("is_active", true)
+            .or(`customer_id.is.null,customer_id.eq.${user.id}`);
+          if (couponData) {
+            setDbCoupons(couponData);
+          }
+
+          const { data: userOrders } = await supabase
+            .from("orders")
+            .select("coupon_code")
+            .eq("profile_id", user.id)
+            .neq("status", "cancelled");
+          if (userOrders) {
+            const codes = userOrders.map(o => o.coupon_code).filter(Boolean) as string[];
+            setUsedCoupons(codes);
+          }
+        } catch (e) {
+          console.error("Failed to load coupons in checkout:", e);
+        }
       }
     }
     checkUser();
-  }, [router, supabase.auth]);
+  }, [router, supabase]);
 
   // Read coordinates and address line 2 dynamically from context
   const lat = location?.lat.toFixed(6) || STORE_LAT.toFixed(6);
@@ -66,6 +88,8 @@ export default function CheckoutPage() {
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
+  const [dbCoupons, setDbCoupons] = useState<any[]>([]);
+  const [usedCoupons, setUsedCoupons] = useState<string[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<"COD" | "online">("COD");
   const [loading, setLoading] = useState(false);
   const [radiusError, setRadiusError] = useState<string | null>(null);
@@ -85,28 +109,32 @@ export default function CheckoutPage() {
     setCouponError(null);
     const codeUpper = couponCode.trim().toUpperCase();
 
-    if (codeUpper === "VEGGIES100") {
-      if (subtotal < 499) {
-        setCouponError("Min order value for VEGGIES100 is ₹499");
-      } else {
-        setAppliedCoupon({ code: "VEGGIES100", discount: 100 });
-      }
-    } else if (codeUpper === "FRESH20") {
-      if (subtotal < 299) {
-        setCouponError("Min order value for FRESH20 is ₹299");
-      } else {
-        const disc = Math.min(subtotal * 0.2, 80);
-        setAppliedCoupon({ code: "FRESH20", discount: disc });
-      }
-    } else if (codeUpper === "WELCOME50") {
-      if (subtotal < 199) {
-        setCouponError("Min order value for WELCOME50 is ₹199");
-      } else {
-        setAppliedCoupon({ code: "WELCOME50", discount: 50 });
-      }
-    } else {
+    const matched = dbCoupons.find((c) => c.code.toUpperCase() === codeUpper);
+    if (!matched) {
       setCouponError("Invalid coupon code");
+      return;
     }
+
+    if (subtotal < matched.min_order_value) {
+      setCouponError(`Min order value for ${matched.code} is ₹${matched.min_order_value}`);
+      return;
+    }
+
+    if (matched.once_per_user && usedCoupons.map(code => code.toUpperCase()).includes(matched.code.toUpperCase())) {
+      setCouponError("You have already used this coupon code");
+      return;
+    }
+
+    let disc = 0;
+    if (matched.discount_type === "flat") {
+      disc = matched.discount_value;
+    } else if (matched.discount_type === "percentage") {
+      disc = (subtotal * matched.discount_value) / 100;
+      if (matched.max_discount) {
+        disc = Math.min(disc, matched.max_discount);
+      }
+    }
+    setAppliedCoupon({ code: matched.code, discount: disc });
   };
 
   const handlePlaceOrder = async () => {
