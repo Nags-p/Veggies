@@ -273,66 +273,70 @@ export default function ProductDetails() {
 
               <p className="text-sm font-semibold text-slate-500">{product.weight}</p>
 
-              {/* Price Details */}
-              <div className="flex items-end gap-3 pt-2">
-                <span className="text-3xl font-black text-slate-900">₹{product.price}</span>
-                {product.discount > 0 && (
-                  <>
-                    <span className="text-lg text-slate-400 line-through pb-0.5">
-                      ₹{product.original_price}
-                    </span>
-                    <span className="text-xs font-extrabold text-primary bg-primary-light/10 px-2 py-1 rounded-lg mb-1">
-                      {product.discount.toFixed(0)}% OFF
-                    </span>
-                  </>
-                )}
-              </div>
-
-              {/* Stock status indicator */}
-              <div className="text-xs font-bold pt-1">
-                {product.stock > 0 ? (
-                  product.stock <= 5 ? (
-                    <span className="text-amber-600">Only {product.stock} left in stock!</span>
-                  ) : (
-                    <span className="text-emerald-600">In Stock</span>
-                  )
-                ) : (
-                  <span className="text-red-500">Out of Stock</span>
-                )}
-              </div>
-            </div>
-
-            {/* Cart Button Actions */}
-            <div className="pt-4 border-t border-slate-100 flex items-center gap-4">
-              {product.stock > 0 ? (
-                quantity === 0 ? (
-                  <button
-                     onClick={() => addToCart(product, 1)}
-                     className="flex-1 max-w-xs bg-primary hover:bg-primary-dark text-white font-extrabold px-6 py-4 rounded-button shadow-premium transition-all duration-150 flex items-center justify-center gap-2"
-                  >
-                    <ShoppingCart className="h-5 w-5" />
-                    ADD TO CART
-                  </button>
-                ) : (
-                  <div className="flex items-center justify-between w-36 bg-primary text-white font-extrabold py-3 px-4 rounded-button shadow-premium">
-                    <button onClick={() => addToCart(product, quantity - 1)} className="hover:scale-110 active:scale-95 transition-transform p-1">
-                      <Minus className="h-4.5 w-4.5" />
-                    </button>
-                    <span>{quantity}</span>
-                    <button
-                      onClick={() => addToCart(product, quantity + 1)}
-                      disabled={quantity >= product.stock}
-                      className="hover:scale-110 active:scale-95 transition-transform p-1 disabled:opacity-50"
-                    >
-                      <Plus className="h-4.5 w-4.5" />
-                    </button>
+              {/* Price Details & Add to Cart button */}
+              <div className="flex items-center justify-between gap-4 pt-2 border-b border-slate-100/50 pb-4">
+                <div>
+                  <div className="flex items-end gap-3">
+                    <span className="text-3xl font-black text-slate-900">₹{product.price}</span>
+                    {product.discount > 0 && (
+                      <>
+                        <span className="text-lg text-slate-400 line-through pb-0.5">
+                          ₹{product.original_price}
+                        </span>
+                        <span className="text-xs font-extrabold text-primary bg-primary-light/10 px-2 py-1 rounded-lg mb-1">
+                          {product.discount.toFixed(0)}% OFF
+                        </span>
+                      </>
+                    )}
                   </div>
-                )
-              ) : (
-                <button disabled className="flex-1 max-w-xs bg-slate-200 text-slate-400 font-bold px-6 py-4 rounded-button cursor-not-allowed">
-                  SOLD OUT
-                </button>
-              )}
+                  
+                  {/* Stock status indicator */}
+                  <div className="text-xs font-bold pt-1.5 text-left">
+                    {product.stock > 0 ? (
+                      product.stock <= 5 ? (
+                        <span className="text-amber-600">Only {product.stock} left!</span>
+                      ) : (
+                        <span className="text-emerald-600">In Stock</span>
+                      )
+                    ) : (
+                      <span className="text-red-500">Out of Stock</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Add to Cart Actions aligned next to price */}
+                <div className="flex-shrink-0">
+                  {product.stock > 0 ? (
+                    quantity === 0 ? (
+                      <button
+                        onClick={() => addToCart(product, 1)}
+                        className="bg-primary hover:bg-primary-dark text-white font-black text-xs px-6 py-2.5 rounded-xl shadow-premium hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
+                      >
+                        <ShoppingCart className="h-4 w-4" />
+                        Add
+                      </button>
+                    ) : (
+                      <div className="flex items-center justify-between w-28 bg-primary text-white font-black text-xs py-2 px-3.5 rounded-xl shadow-premium">
+                        <button onClick={() => addToCart(product, quantity - 1)} className="hover:scale-110 active:scale-95 transition-transform p-0.5">
+                          <Minus className="h-3.5 w-3.5" />
+                        </button>
+                        <span className="select-none">{quantity}</span>
+                        <button
+                          onClick={() => addToCart(product, quantity + 1)}
+                          disabled={quantity >= product.stock}
+                          className="hover:scale-110 active:scale-95 transition-transform p-0.5 disabled:opacity-50"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )
+                  ) : (
+                    <button disabled className="bg-slate-200 text-slate-400 font-black text-xs px-6 py-2.5 rounded-xl cursor-not-allowed uppercase tracking-wider">
+                      Sold Out
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Guarantees */}

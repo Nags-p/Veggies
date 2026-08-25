@@ -9,10 +9,11 @@ export default function CapacitorBackButtonHandler() {
   useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
+      e.stopPropagation();
     };
-    document.addEventListener("contextmenu", handleContextMenu);
+    window.addEventListener("contextmenu", handleContextMenu, { capture: true });
     return () => {
-      document.removeEventListener("contextmenu", handleContextMenu);
+      window.removeEventListener("contextmenu", handleContextMenu, { capture: true });
     };
   }, []);
 

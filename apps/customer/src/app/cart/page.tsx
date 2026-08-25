@@ -3,15 +3,17 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ShoppingBag, ArrowLeft, Trash2, Plus, Minus, ShieldCheck, ArrowRight, MapPin, Home, Briefcase, Tag, AlertCircle, Loader2, Edit2, Locate } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { createClient } from "@/lib/supabase/client";
 import FooterNav from "@/components/FooterNav";
 
-export default function CartPage() {
+function CartContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const couponParam = searchParams.get("coupon");
   const supabase = createClient();
   const {
     cart,
@@ -114,6 +116,17 @@ export default function CartPage() {
     }
     loadData();
   }, [supabase]);
+
+  // Apply query parameter coupon if routed
+  useEffect(() => {
+    if (couponParam && coupons.length > 0) {
+      const found = coupons.find(c => c.code.toUpperCase() === couponParam.toUpperCase());
+      if (found) {
+        // Automatically apply the coupon
+        setAppliedCoupon(found);
+      }
+    }
+  }, [couponParam, coupons]);
 
   // Listen for iframe map coordinates and reverse-geocode them
   useEffect(() => {
@@ -364,14 +377,44 @@ export default function CartPage() {
           </button>
           
           <div className="min-w-0 cursor-pointer" onClick={() => setShowAddressDrawer(true)}>
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Delivering to</span>
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5 block">
+              <span>Delivering to</span>
+              {(() => {
+                const sel = addresses.find(a => a.id === selectedAddressId);
+                if (!sel?.name) return null;
+                return (
+                  <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[8px] font-extrabold tracking-wider uppercase inline-block select-none">
+                    {sel.name}
+                  </span>
+                );
+              })()}
+            </span>
             {addressLoading ? (
               <span className="text-[11px] font-black text-slate-400 block animate-pulse">Loading address...</span>
             ) : addresses.length === 0 ? (
               <span className="text-[11px] font-black text-amber-600 block">Add delivery address...</span>
             ) : (
-              <span className="text-[11px] font-black text-slate-800 block truncate max-w-[160px] sm:max-w-md">
-                {addresses.find(a => a.id === selectedAddressId)?.building_name || "Select Address"}
+              <span 
+                className="text-[11px] font-black text-slate-800 block leading-snug max-w-[240px] sm:max-w-md"
+                style={{
+                  display: "-webkit-box",
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden"
+                }}
+              >
+                {(() => {
+                  const sel = addresses.find(a => a.id === selectedAddressId);
+                  if (!sel) return "Select Address";
+                  const pinCode = sel.complete_address.match(/\b\d{6}\b/)?.[0] || "";
+                  let cleanAddr = sel.complete_address;
+                  if (pinCode) {
+                    cleanAddr = cleanAddr.replace(pinCode, "").replace(/,\s*,/g, ",").trim();
+                  }
+                  cleanAddr = cleanAddr.replace(/,\s*India$/i, "").replace(/,\s*Karnataka$/i, "").trim();
+                  cleanAddr = cleanAddr.replace(/,\s*,/g, ",").replace(/,\s*$/, "").trim();
+                  return `${sel.building_name} (${pinCode || "No PIN"}), ${cleanAddr}`;
+                })()}
               </span>
             )}
           </div>
@@ -519,43 +562,71 @@ export default function CartPage() {
                     </div>
                   ) : coupons.length === 0 ? (
                     <p className="text-[10px] font-bold text-slate-400 text-center py-2">No coupons available right now.</p>
-                  ) : (
-                    <div className="space-y-3.5 divide-y divide-slate-100">
-                      {[...coupons]
-                        .sort((a, b) => {
-                          const aEligible = subtotal >= a.min_order_value ? 0 : 1;
-                          const bEligible = subtotal >= b.min_order_value ? 0 : 1;
-                          return aEligible - bEligible;
-                        })
-                        .map((c, idx) => {
-                          const isEligible = subtotal >= c.min_order_value;
-                          return (
-                            <div key={c.id} className={`flex items-center justify-between gap-3 ${idx > 0 ? "pt-3" : ""}`}>
-                              <div className="space-y-0.5">
-                                <span className="text-xs font-black text-slate-800 uppercase block">{c.code}</span>
-                                <span className="text-[9px] font-semibold text-slate-400 block leading-tight">
-                                  {c.discount_type === "flat" ? `Flat ₹${c.discount_value} Off` : `${c.discount_value}% Off`} on orders above ₹{c.min_order_value}
-                                </span>
-                                {!isEligible && (
-                                  <span className="text-[8px] font-extrabold text-amber-600 block mt-0.5">
-                                    Add ₹{c.min_order_value - subtotal} more to unlock
+                  ) : (() => {
+                    const eligibleOrNearCoupons = coupons.filter((c) => {
+                      const isApplicable = subtotal >= c.min_order_value;
+                      const amountNeeded = c.min_order_value - subtotal;
+                      return isApplicable || (amountNeeded > 0 && amountNeeded <= 150);
+                    });
+
+                    if (eligibleOrNearCoupons.length === 0) {
+                      return (
+                        <div className="text-center py-2 space-y-1.5">
+                          <p className="text-[10px] font-bold text-slate-400">No active offers for your current order value.</p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-3.5 divide-y divide-slate-100">
+                        {eligibleOrNearCoupons
+                          .sort((a, b) => {
+                            const aEligible = subtotal >= a.min_order_value ? 0 : 1;
+                            const bEligible = subtotal >= b.min_order_value ? 0 : 1;
+                            return aEligible - bEligible;
+                          })
+                          .map((c, idx) => {
+                            const isEligible = subtotal >= c.min_order_value;
+                            return (
+                              <div key={c.id} className={`flex items-center justify-between gap-3 ${idx > 0 ? "pt-3" : ""}`}>
+                                <div className="space-y-0.5">
+                                  <span className="text-xs font-black text-slate-800 uppercase block">{c.code}</span>
+                                  <span className="text-[9px] font-semibold text-slate-400 block leading-tight">
+                                    {c.discount_type === "flat" ? `Flat ₹${c.discount_value} Off` : `${c.discount_value}% Off`} on orders above ₹{c.min_order_value}
                                   </span>
-                                )}
+                                  {!isEligible && (
+                                    <span className="text-[8px] font-extrabold text-amber-600 block mt-0.5">
+                                      Add ₹{c.min_order_value - subtotal} more to unlock
+                                    </span>
+                                  )}
+                                </div>
+                                <button
+                                  disabled={!isEligible}
+                                  onClick={() => setAppliedCoupon(c)}
+                                  className={`text-[10px] font-black px-3.5 py-1.5 rounded-xl border transition-all cursor-pointer flex-shrink-0 ${
+                                    isEligible
+                                      ? "bg-primary border-primary text-white hover:bg-primary-dark shadow-sm hover:scale-105 active:scale-95"
+                                      : "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed"
+                                  }`}
+                                >
+                                  Apply
+                                </button>
                               </div>
-                              <button
-                                disabled={!isEligible}
-                                onClick={() => setAppliedCoupon(c)}
-                                className={`text-[10px] font-black px-3.5 py-1.5 rounded-xl border transition-all cursor-pointer flex-shrink-0 ${
-                                  isEligible
-                                    ? "bg-primary border-primary text-white hover:bg-primary-dark shadow-sm hover:scale-105 active:scale-95"
-                                    : "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed"
-                                }`}
-                              >
-                                Apply
-                              </button>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                      </div>
+                    );
+                  })()}
+
+                  {/* View all coupons link at the bottom below coupons */}
+                  {coupons.length > 0 && !appliedCoupon && (
+                    <div className="mt-3.5 pt-3.5 border-t border-slate-100 text-center">
+                      <Link
+                        href="/coupons"
+                        className="text-[10px] font-extrabold text-primary hover:underline hover:text-primary-dark transition-all cursor-pointer block"
+                      >
+                        View all coupons
+                      </Link>
                     </div>
                   )}
                 </div>
@@ -1164,5 +1235,17 @@ export default function CartPage() {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+export default function CartPage() {
+  return (
+    <React.Suspense fallback={
+      <div className="min-h-screen bg-slate-50/50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <CartContent />
+    </React.Suspense>
   );
 }

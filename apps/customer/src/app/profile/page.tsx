@@ -125,9 +125,6 @@ export default function ProfilePage() {
         {/* Screen Header Title */}
         <div className="flex items-center justify-between py-1">
           <h1 className="text-xl font-black text-slate-900">Profile</h1>
-          <div className="p-2 bg-white rounded-full border border-slate-100 shadow-sm">
-            <Settings className="h-4.5 w-4.5 text-slate-500" />
-          </div>
         </div>
 
         {/* User Profile Header Card */}

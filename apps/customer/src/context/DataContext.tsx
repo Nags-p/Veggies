@@ -115,12 +115,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             "exotic-veggies": "🥑",
           };
           const catImages: Record<string, string> = {
-            "fresh-fruits": "https://images.unsplash.com/photo-1619546813926-a78fa6372cd2?q=80&w=150",
-            "fresh-vegetables": "https://images.unsplash.com/photo-1597362925123-77861d3fbac7?q=80&w=150",
-            "organic-greens": "https://images.unsplash.com/photo-1543083115-638c32cd3d58?q=80&w=150",
-            "leafy-vegetables": "https://images.unsplash.com/photo-1596797038530-2c107229654b?q=80&w=150",
-            "seasonal-delights": "https://images.unsplash.com/photo-1553279768-865429fa0078?q=80&w=150",
-            "exotic-veggies": "https://images.unsplash.com/photo-1568584711075-3d021a7c3ecf?q=80&w=150"
+            "fresh-fruits": "/images/categories/fresh-fruits.jpg",
+            "fresh-vegetables": "/images/categories/fresh-vegetables.jpg",
+            "organic-greens": "/images/categories/organic-greens.jpg",
+            "leafy-vegetables": "/images/categories/leafy-vegetables.jpg",
+            "seasonal-delights": "/images/categories/seasonal-delights.jpg",
+            "exotic-veggies": "/images/categories/exotic-veggies.jpg"
           };
           const mappedCats = catData.map((c: any) => {
             const count = mappedProducts.filter((p: any) => p.category_id === c.id).length;
@@ -129,18 +129,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
               name: c.name,
               slug: c.slug,
               icon: iconMap[c.slug] || "🥦",
-              imageUrl: catImages[c.slug] || "https://images.unsplash.com/photo-1540420773420-3366772f4999?q=80&w=150",
+              imageUrl: catImages[c.slug] || "/images/categories/fresh-vegetables.jpg",
               dbCategoryId: c.id,
-              count: `${count} ${count === 1 ? 'item' : 'items'}`
+              count: `${count} ${count === 1 ? 'item' : 'items'}`,
+              itemCountValue: count
             };
-          });
+          }).filter((c) => c.itemCountValue > 0);
           const finalCats = [
             {
               id: "all",
               name: "All",
               slug: "all",
               icon: "🥦",
-              imageUrl: "https://images.unsplash.com/photo-1540420773420-3366772f4999?q=80&w=150",
+              imageUrl: "/images/categories/fresh-vegetables.jpg",
               dbCategoryId: null,
               count: `${mappedProducts.length} items`
             },

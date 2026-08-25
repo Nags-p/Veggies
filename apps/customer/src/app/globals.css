@@ -63,6 +63,13 @@ button, input, select, textarea, a, [role="button"] {
   user-select: none !important;
 }
 
+/* Disable user dragging and touch callouts on links and images */
+a, img {
+  -webkit-touch-callout: none !important;
+  -webkit-user-drag: none !important;
+  user-drag: none !important;
+}
+
 /* Re-enable input and textarea text selections */
 input, textarea {
   -webkit-user-select: text !important;

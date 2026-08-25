@@ -158,19 +158,53 @@ function ProductDetailsContent() {
                 </p>
               </div>
 
-              {/* Price Details */}
-              <div className="flex items-center gap-3 pt-1">
-                <span className="text-2xl font-black text-slate-900">₹{product.price}</span>
-                {product.discount > 0 && (
-                  <>
-                    <span className="text-sm font-semibold text-slate-400 line-through">
-                      MRP ₹{product.original_price}
-                    </span>
-                    <span className="bg-primary/10 text-primary text-[10px] font-black px-2 py-0.5 rounded-md border border-primary/20">
-                      {product.discount.toFixed(0)}% OFF
-                    </span>
-                  </>
-                )}
+              {/* Price & Add to Cart Inline */}
+              <div className="flex items-center justify-between gap-4 pt-1 border-b border-slate-100/50 pb-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl font-black text-slate-900">₹{product.price}</span>
+                  {product.discount > 0 && (
+                    <>
+                      <span className="text-sm font-semibold text-slate-400 line-through">
+                        MRP ₹{product.original_price}
+                      </span>
+                      <span className="bg-primary/10 text-primary text-[10px] font-black px-2 py-0.5 rounded-md border border-primary/20">
+                        {product.discount.toFixed(0)}% OFF
+                      </span>
+                    </>
+                  )}
+                </div>
+
+                {/* ADD Actions aligned next to price */}
+                <div className="flex-shrink-0">
+                  {product.stock > 0 ? (
+                    quantity === 0 ? (
+                      <button
+                        onClick={() => addToCart(product as any, 1)}
+                        className="bg-primary hover:bg-primary-dark text-white font-black text-xs px-6 py-2.5 rounded-xl shadow-premium hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
+                      >
+                        <ShoppingCart className="h-4 w-4" /> Add
+                      </button>
+                    ) : (
+                      <div className="flex items-center justify-between w-28 bg-primary text-white font-black text-xs py-2 px-3.5 rounded-xl shadow-premium">
+                        <button onClick={() => addToCart(product as any, quantity - 1)} className="hover:scale-110 active:scale-95 transition-transform p-0.5">
+                          -
+                        </button>
+                        <span className="select-none">{quantity}</span>
+                        <button
+                          onClick={() => quantity < product.stock && addToCart(product as any, quantity + 1)}
+                          disabled={quantity >= product.stock}
+                          className="hover:scale-110 active:scale-95 transition-transform p-0.5 disabled:opacity-50"
+                        >
+                          +
+                        </button>
+                      </div>
+                    )
+                  ) : (
+                    <button disabled className="bg-slate-200 text-slate-400 font-black text-xs px-6 py-2.5 rounded-xl cursor-not-allowed uppercase tracking-wider">
+                      Sold Out
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Description */}
@@ -182,40 +216,9 @@ function ProductDetailsContent() {
               </div>
             </div>
 
-            {/* Cart ADD Actions */}
-            <div className="border-t border-slate-100 pt-5 space-y-4">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex-1">
-                  {quantity === 0 ? (
-                    <button
-                      onClick={() => addToCart(product as any, 1)}
-                      className="w-full bg-primary hover:bg-primary-dark text-white font-black text-xs py-3.5 px-6 rounded-button shadow-premium flex items-center justify-center gap-2 cursor-pointer active:scale-98 transition-transform"
-                    >
-                      <ShoppingCart className="h-4.5 w-4.5" /> ADD TO CART
-                    </button>
-                  ) : (
-                    <div className="flex items-center justify-between w-full bg-primary text-white font-black text-xs rounded-button overflow-hidden shadow-premium border border-primary">
-                      <button
-                        onClick={() => addToCart(product as any, quantity - 1)}
-                        className="px-6 py-3.5 hover:bg-primary-dark transition-colors cursor-pointer text-sm"
-                      >
-                        -
-                      </button>
-                      <span className="select-none text-xs">{quantity} in cart</span>
-                      <button
-                        onClick={() => quantity < product.stock && addToCart(product as any, quantity + 1)}
-                        disabled={quantity >= product.stock}
-                        className="px-6 py-3.5 hover:bg-primary-dark transition-colors disabled:opacity-50 cursor-pointer text-sm"
-                      >
-                        +
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Guarantee list */}
-              <div className="grid grid-cols-2 gap-3 text-[9px] font-bold text-slate-400 pt-1">
+            {/* Guarantee list */}
+            <div className="border-t border-slate-100 pt-4">
+              <div className="grid grid-cols-2 gap-3 text-[9px] font-bold text-slate-400">
                 <div className="flex items-center gap-1.5">
                   <Shield className="h-4 w-4 text-emerald-500" /> Safe & Hygienic Packaging
                 </div>

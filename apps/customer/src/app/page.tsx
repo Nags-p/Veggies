@@ -24,54 +24,7 @@ export default function Home() {
     product.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  if (loadingLocation || dbLoading) {
-    const icons = ["🥕", "🍅", "🥦", "🍋", "🌽", "🍎", "🥬", "🍊"];
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-6">
-        <div className="relative w-24 h-24">
-          {icons.map((icon, i) => {
-            const angle = (i / icons.length) * 360;
-            return (
-              <motion.span
-                key={i}
-                className="absolute text-2xl"
-                style={{
-                  left: "50%",
-                  top: "50%",
-                }}
-                animate={{
-                  x: [
-                    Math.cos(((angle) * Math.PI) / 180) * 36,
-                    Math.cos(((angle + 360) * Math.PI) / 180) * 36,
-                  ],
-                  y: [
-                    Math.sin(((angle) * Math.PI) / 180) * 36,
-                    Math.sin(((angle + 360) * Math.PI) / 180) * 36,
-                  ],
-                  scale: [0.8, 1.2, 0.8],
-                }}
-                transition={{
-                  duration: 3,
-                  repeat: Infinity,
-                  ease: "linear",
-                  scale: { duration: 1.5, repeat: Infinity, ease: "easeInOut" },
-                }}
-              >
-                {icon}
-              </motion.span>
-            );
-          })}
-        </div>
-        <motion.p
-          className="text-xs font-extrabold text-primary tracking-wider"
-          animate={{ opacity: [0.4, 1, 0.4] }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-        >
-          Loading fresh picks...
-        </motion.p>
-      </div>
-    );
-  }
+
 
   return (
     <div className="min-h-screen pb-16 sm:pb-8 bg-background">
@@ -183,27 +136,42 @@ export default function Home() {
                     </Link>
                   </div>
                   <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
-                    {categories.map((cat, index) => (
-                      <Link key={cat.slug} href={`/category?selected=${cat.slug}`}>
-                        <motion.div
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.98 }}
-                          className="bg-card rounded-xl p-4 text-center cursor-pointer border border-slate-100 hover:border-accent/30 shadow-card hover:shadow transition-all duration-150 space-y-2 group"
-                        >
-                          <div className="text-3xl bg-slate-50 rounded-full w-14 h-14 flex items-center justify-center mx-auto group-hover:bg-primary-light/10 transition-colors duration-150">
-                            {cat.icon}
-                          </div>
-                          <div>
-                            <h3 className="text-xs font-bold text-slate-700 leading-tight group-hover:text-primary transition-colors">
-                              {cat.name}
-                            </h3>
-                            <span className="text-[10px] font-semibold text-slate-400">
-                              {cat.count}
-                            </span>
-                          </div>
-                        </motion.div>
-                      </Link>
-                    ))}
+                    {dbLoading ? (
+                      [...Array(6)].map((_, i) => (
+                        <div key={i} className="bg-white rounded-xl p-4 text-center border border-slate-100/80 animate-pulse space-y-3">
+                          <div className="bg-slate-200 rounded-full w-14 h-14 mx-auto" />
+                          <div className="h-3 bg-slate-200 rounded w-16 mx-auto" />
+                          <div className="h-2 bg-slate-200 rounded w-10 mx-auto" />
+                        </div>
+                      ))
+                    ) : (
+                      categories.map((cat, index) => (
+                        <Link key={cat.slug} href={`/category?selected=${cat.slug}`}>
+                          <motion.div
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.98 }}
+                            className="bg-card rounded-xl p-4 text-center cursor-pointer border border-slate-100 hover:border-accent/30 shadow-card hover:shadow transition-all duration-150 space-y-2 group"
+                          >
+                            <div className="relative w-14 h-14 rounded-full overflow-hidden mx-auto border border-slate-100 bg-slate-50 group-hover:border-primary/20 transition-all duration-150">
+                              <Image
+                                src={cat.imageUrl}
+                                alt={cat.name}
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                            <div>
+                              <h3 className="text-xs font-bold text-slate-700 leading-tight group-hover:text-primary transition-colors">
+                                {cat.name}
+                              </h3>
+                              <span className="text-[10px] font-semibold text-slate-400">
+                                {cat.count}
+                              </span>
+                            </div>
+                          </motion.div>
+                        </Link>
+                      ))
+                    )}
                   </div>
                 </section>
 
@@ -221,11 +189,27 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                    {products
-                      .filter((p) => p.discount >= 24)
-                      .map((product) => (
-                        <ProductCard key={product.id} product={product} />
-                      ))}
+                    {dbLoading ? (
+                      [...Array(5)].map((_, i) => (
+                        <div key={i} className="bg-white rounded-xl p-4 border border-slate-100/80 animate-pulse space-y-4">
+                          <div className="bg-slate-200 h-32 w-full rounded-xl" />
+                          <div className="space-y-2">
+                            <div className="h-3.5 bg-slate-200 rounded w-3/4 animate-none" />
+                            <div className="h-3 bg-slate-200 rounded w-1/2 animate-none" />
+                          </div>
+                          <div className="flex justify-between items-center pt-2">
+                            <div className="h-5 bg-slate-200 rounded w-16 animate-none" />
+                            <div className="h-8 bg-slate-200 rounded w-20 animate-none" />
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      products
+                        .filter((p) => p.discount >= 24)
+                        .map((product) => (
+                          <ProductCard key={product.id} product={product} />
+                        ))
+                    )}
                   </div>
                 </section>
 
@@ -237,9 +221,25 @@ export default function Home() {
                     </h2>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                    {products.slice(0, 5).map((product) => (
-                      <ProductCard key={product.id} product={product} />
-                    ))}
+                    {dbLoading ? (
+                      [...Array(5)].map((_, i) => (
+                        <div key={i} className="bg-white rounded-xl p-4 border border-slate-100/80 animate-pulse space-y-4">
+                          <div className="bg-slate-200 h-32 w-full rounded-xl" />
+                          <div className="space-y-2">
+                            <div className="h-3.5 bg-slate-200 rounded w-3/4 animate-none" />
+                            <div className="h-3 bg-slate-200 rounded w-1/2 animate-none" />
+                          </div>
+                          <div className="flex justify-between items-center pt-2">
+                            <div className="h-5 bg-slate-200 rounded w-16 animate-none" />
+                            <div className="h-8 bg-slate-200 rounded w-20 animate-none" />
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      products.slice(0, 5).map((product) => (
+                        <ProductCard key={product.id} product={product} />
+                      ))
+                    )}
                   </div>
                 </section>
 
@@ -306,9 +306,25 @@ export default function Home() {
                     </h2>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                    {products.slice(5, 10).map((product) => (
-                      <ProductCard key={product.id} product={product} />
-                    ))}
+                    {dbLoading ? (
+                      [...Array(5)].map((_, i) => (
+                        <div key={i} className="bg-white rounded-xl p-4 border border-slate-100/80 animate-pulse space-y-4">
+                          <div className="bg-slate-200 h-32 w-full rounded-xl" />
+                          <div className="space-y-2">
+                            <div className="h-3.5 bg-slate-200 rounded w-3/4 animate-none" />
+                            <div className="h-3 bg-slate-200 rounded w-1/2 animate-none" />
+                          </div>
+                          <div className="flex justify-between items-center pt-2">
+                            <div className="h-5 bg-slate-200 rounded w-16 animate-none" />
+                            <div className="h-8 bg-slate-200 rounded w-20 animate-none" />
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      products.slice(5, 10).map((product) => (
+                        <ProductCard key={product.id} product={product} />
+                      ))
+                    )}
                   </div>
                 </section>
               </>
