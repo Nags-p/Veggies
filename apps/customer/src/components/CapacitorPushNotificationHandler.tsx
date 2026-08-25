@@ -13,17 +13,20 @@ export default function CapacitorPushNotificationHandler() {
     let errListener: any = null;
     let recvListener: any = null;
     let actListener: any = null;
+    let localActListener: any = null;
 
     async function setupListeners() {
       if (typeof window !== "undefined" && (window as any).Capacitor) {
         try {
           const { PushNotifications } = await import("@capacitor/push-notifications");
+          const { LocalNotifications } = await import("@capacitor/local-notifications");
 
           // Remove any existing listeners first
           if (pushListener) pushListener.remove();
           if (errListener) errListener.remove();
           if (recvListener) recvListener.remove();
           if (actListener) actListener.remove();
+          if (localActListener) localActListener.remove();
 
           // 1. Listen for token registration success
           pushListener = await PushNotifications.addListener(
@@ -69,7 +72,6 @@ export default function CapacitorPushNotificationHandler() {
               // Trigger a local notification so it pops up as a system notification banner in the foreground
               if (typeof window !== "undefined" && (window as any).Capacitor) {
                 try {
-                  const { LocalNotifications } = await import("@capacitor/local-notifications");
                   await LocalNotifications.requestPermissions();
                   await LocalNotifications.createChannel({
                     id: 'customer_order_alerts',
@@ -92,6 +94,11 @@ export default function CapacitorPushNotificationHandler() {
                         id: Math.floor(Math.random() * 100000),
                         channelId: 'customer_order_alerts',
                         smallIcon: 'ic_launcher_foreground',
+                        extra: {
+                          notificationId: notification.data?.notificationId || "",
+                          orderId: notification.data?.orderId || "",
+                          redirectTo: notification.data?.redirectTo || "",
+                        }
                       }
                     ]
                   });
@@ -105,9 +112,22 @@ export default function CapacitorPushNotificationHandler() {
           // 4. Listen for tap action on push notification
           actListener = await PushNotifications.addListener(
             "pushNotificationActionPerformed",
-            (action) => {
+            async (action) => {
               console.log("Push action performed:", action);
               
+              const notificationId = action.notification.data?.notificationId;
+              if (notificationId) {
+                try {
+                  const { error } = await supabase
+                    .from("notifications")
+                    .update({ read: true })
+                    .eq("id", notificationId);
+                  if (error) console.error("Failed to mark push notification as read:", error);
+                } catch (e) {
+                  console.error("Error marking push notification as read:", e);
+                }
+              }
+
               // Handle generic redirection
               const redirectTo = action.notification.data?.redirectTo;
               if (redirectTo) {
@@ -118,6 +138,52 @@ export default function CapacitorPushNotificationHandler() {
               const orderId = action.notification.data?.orderId;
               if (orderId) {
                 router.push(`/orders/track?id=${orderId}`);
+                return;
+              }
+
+              // Fallback: open notifications page if we clicked a general notification
+              if (notificationId) {
+                router.push("/notifications");
+              }
+            }
+          );
+
+          // 5. Listen for tap action on local notification
+          localActListener = await LocalNotifications.addListener(
+            "localNotificationActionPerformed",
+            async (action) => {
+              console.log("Local notification action performed:", action);
+              const extra = action.notification.extra;
+              if (!extra) return;
+
+              const notificationId = extra.notificationId;
+              if (notificationId) {
+                try {
+                  const { error } = await supabase
+                    .from("notifications")
+                    .update({ read: true })
+                    .eq("id", notificationId);
+                  if (error) console.error("Failed to mark local notification as read:", error);
+                } catch (e) {
+                  console.error("Error marking local notification as read:", e);
+                }
+              }
+
+              const redirectTo = extra.redirectTo;
+              if (redirectTo) {
+                router.push(redirectTo);
+                return;
+              }
+
+              const orderId = extra.orderId;
+              if (orderId) {
+                router.push(`/orders/track?id=${orderId}`);
+                return;
+              }
+
+              // Fallback: open notifications page if we clicked a general notification
+              if (notificationId) {
+                router.push("/notifications");
               }
             }
           );
@@ -203,6 +269,7 @@ export default function CapacitorPushNotificationHandler() {
       if (errListener) errListener.remove();
       if (recvListener) recvListener.remove();
       if (actListener) actListener.remove();
+      if (localActListener) localActListener.remove();
     };
   }, [router, supabase]);
 

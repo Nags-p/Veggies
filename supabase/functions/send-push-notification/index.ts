@@ -125,13 +125,14 @@ Deno.serve(async (req) => {
     // Send notifications to FCM
     const projectId = serviceAccount.project_id;
     const sendPromises = tokensToSend.map(async (token) => {
-      const isNewOrder = type === "INSERT";
+      const isNewOrder = table === "orders" && type === "INSERT";
       
       const fcmPayload: any = {
         message: {
           token: token,
           data: {
             orderId: table === "orders" ? record.id : "",
+            notificationId: table === "notifications" ? record.id : "",
             title: title,
             body: body,
             isNewOrder: isNewOrder ? "true" : "false",

@@ -1,10 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Search, MapPin, Bell, User, ShoppingCart, ChevronDown } from "lucide-react";
 import { useLocation } from "@/context/LocationContext";
 import { useCart } from "@/context/CartContext";
+import { createClient } from "@/lib/supabase/client";
 
 interface HeaderProps {
   onSearch?: (query: string) => void;
@@ -14,6 +15,67 @@ interface HeaderProps {
 export default function Header({ onSearch, hideSearch }: HeaderProps) {
   const { location, isServiceable, setShowLocationModal } = useLocation();
   const { itemsCount } = useCart();
+  const [unreadCount, setUnreadCount] = useState(0);
+  const supabase = createClient();
+
+  useEffect(() => {
+    let channel: any;
+
+    async function fetchUnreadCount() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { count, error } = await supabase
+        .from("notifications")
+        .select("*", { count: "exact", head: true })
+        .eq("profile_id", user.id)
+        .eq("read", false);
+
+      if (!error && count !== null) {
+        setUnreadCount(count);
+      }
+
+      // Realtime subscription
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+      channel = supabase
+        .channel(`header-notifications-${user.id}-${Date.now()}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "notifications",
+            filter: `profile_id=eq.${user.id}`
+          },
+          () => {
+            fetchUnreadCount();
+          }
+        )
+        .subscribe();
+    }
+
+    fetchUnreadCount();
+
+    // Re-run on auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        fetchUnreadCount();
+      } else if (event === "SIGNED_OUT") {
+        setUnreadCount(0);
+        if (channel) {
+          supabase.removeChannel(channel);
+          channel = null;
+        }
+      }
+    });
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-slate-100 shadow-sm py-3 px-4 md:px-8">
@@ -64,12 +126,14 @@ export default function Header({ onSearch, hideSearch }: HeaderProps) {
         {/* Right: Actions */}
         <div className="hidden sm:flex items-center gap-4">
           {/* Notifications */}
-          <button className="relative p-2 rounded-full hover:bg-slate-100 text-slate-600 transition-colors duration-150">
+          <Link href="/notifications" className="relative p-2 rounded-full hover:bg-slate-100 text-slate-600 transition-colors duration-150">
             <Bell className="h-5 w-5" />
-            <span className="absolute top-1.5 right-1.5 bg-primary text-white text-[8px] font-extrabold h-3.5 w-3.5 rounded-full flex items-center justify-center border border-white">
-              2
-            </span>
-          </button>
+            {unreadCount > 0 && (
+              <span className="absolute top-1.5 right-1.5 bg-primary text-white text-[8px] font-extrabold h-3.5 w-3.5 rounded-full flex items-center justify-center border border-white">
+                {unreadCount}
+              </span>
+            )}
+          </Link>
 
           {/* Profile */}
           <Link href="/profile" className="flex items-center gap-1.5 text-slate-700 hover:text-primary transition-colors duration-150 font-semibold text-sm">

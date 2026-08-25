@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { User as UserIcon, Mail, Phone, Shield, MapPin, ShoppingBag, LogOut, ChevronRight, Loader2, ArrowRight, LayoutDashboard, ShoppingBasket, ShoppingCart, Tag } from "lucide-react";
+import { User as UserIcon, Mail, Phone, Shield, MapPin, ShoppingBag, LogOut, ChevronRight, Loader2, ArrowRight, LayoutDashboard, ShoppingBasket, ShoppingCart, Tag, Bell } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 // Sign out handled client-side directly via supabase client
 import Header from "@/components/Header";
@@ -239,6 +239,33 @@ export default function ProfilePage() {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+          {/* Notifications Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="bg-white rounded-2xl shadow-card border border-slate-100 p-6 space-y-4 md:col-span-2 text-left"
+          >
+            <div className="flex items-center justify-between border-b border-slate-50 pb-3">
+              <h2 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                <Bell className="h-4.5 w-4.5 text-primary" /> Notifications
+              </h2>
+              <Link href="/notifications" className="text-xs font-extrabold text-primary hover:text-primary-dark transition-colors duration-150">
+                View All
+              </Link>
+            </div>
+            <div 
+              onClick={() => router.push("/notifications")}
+              className="flex items-center justify-between p-3.5 bg-slate-50/50 hover:bg-slate-50 border border-slate-100 rounded-xl transition-all duration-150 cursor-pointer"
+            >
+              <div className="space-y-0.5">
+                <p className="text-xs font-extrabold text-slate-800">Notification History</p>
+                <p className="text-[11px] font-semibold text-slate-500">View updates on your orders and promotions</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-slate-400" />
+            </div>
+          </motion.div>
+
           {/* Saved Addresses */}
           <motion.div
             initial={{ opacity: 0, y: 15 }}
