@@ -76,7 +76,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const fetchProductsAndCategories = async () => {
     try {
       const { data: catData } = await supabase.from("categories").select("*").order("name");
-      const { data: prodData } = await supabase.from("products").select("*");
+      const { data: prodData } = await supabase.from("products").select("*").eq("is_hidden", false);
 
       if (prodData) {
         const mappedProducts = prodData.map((p: any) => ({

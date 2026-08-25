@@ -49,9 +49,7 @@ function CategoryPageContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [sortOption, setSortOption] = useState<"popular" | "low-high" | "high-low">("popular");
-  const [onlyOrganic, setOnlyOrganic] = useState(false);
-  const [onlySeasonal, setOnlySeasonal] = useState(false);
-  const [onlyExotic, setOnlyExotic] = useState(false);
+
 
   useEffect(() => {
     const slug = searchParams.get("selected");
@@ -84,16 +82,7 @@ function CategoryPageContent() {
       list = list.filter((p) => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
     }
 
-    // Apply Filters
-    if (onlyOrganic) {
-      list = list.filter((p) => p.is_organic);
-    }
-    if (onlySeasonal) {
-      list = list.filter((p) => p.is_seasonal);
-    }
-    if (onlyExotic) {
-      list = list.filter((p) => p.is_exotic);
-    }
+
 
     // Apply Sorting
     if (sortOption === "low-high") {
@@ -190,20 +179,6 @@ function CategoryPageContent() {
 
         {/* Horizontal Scroll Filter Pills */}
         <div className="flex items-center gap-2 px-4 py-2.5 bg-white border-b border-slate-100 overflow-x-auto scrollbar-none">
-          {/* Filters toggle */}
-          <button
-            onClick={() => setOnlyOrganic(!onlyOrganic)}
-            className={`flex-shrink-0 flex items-center gap-1 rounded-full px-3 py-1.5 text-[10px] font-bold border transition-colors duration-150 ${
-              onlyOrganic
-                ? "bg-primary/10 border-primary text-primary"
-                : "bg-slate-50 border-slate-200/80 text-slate-700"
-            }`}
-          >
-            <SlidersHorizontal className="h-3 w-3" />
-            <span>Filters</span>
-            <ChevronDown className="h-2.5 w-2.5" />
-          </button>
-
           {/* Sort selector toggle */}
           <button
             onClick={() => {
@@ -225,45 +200,6 @@ function CategoryPageContent() {
                 ? "Price: Low to High"
                 : "Price: High to Low"}
             </span>
-            <ChevronDown className="h-2.5 w-2.5" />
-          </button>
-
-          {/* Organic toggle pill */}
-          <button
-            onClick={() => setOnlyOrganic(!onlyOrganic)}
-            className={`flex-shrink-0 flex items-center gap-1 rounded-full px-3 py-1.5 text-[10px] font-bold border transition-colors duration-150 ${
-              onlyOrganic
-                ? "bg-primary/10 border-primary text-primary"
-                : "bg-slate-50 border-slate-200/80 text-slate-700"
-            }`}
-          >
-            <span>Organic</span>
-            <ChevronDown className="h-2.5 w-2.5" />
-          </button>
-
-          {/* Exotic toggle pill */}
-          <button
-            onClick={() => setOnlyExotic(!onlyExotic)}
-            className={`flex-shrink-0 flex items-center gap-1 rounded-full px-3 py-1.5 text-[10px] font-bold border transition-colors duration-150 ${
-              onlyExotic
-                ? "bg-primary/10 border-primary text-primary"
-                : "bg-slate-50 border-slate-200/80 text-slate-700"
-            }`}
-          >
-            <span>Exotic</span>
-            <ChevronDown className="h-2.5 w-2.5" />
-          </button>
-
-          {/* Price selector indicator (dummy pill) */}
-          <button
-            onClick={() => setOnlySeasonal(!onlySeasonal)}
-            className={`flex-shrink-0 flex items-center gap-1 rounded-full px-3 py-1.5 text-[10px] font-bold border transition-colors duration-150 ${
-              onlySeasonal
-                ? "bg-primary/10 border-primary text-primary"
-                : "bg-slate-50 border-slate-200/80 text-slate-700"
-            }`}
-          >
-            <span>Seasonal</span>
             <ChevronDown className="h-2.5 w-2.5" />
           </button>
         </div>
@@ -432,32 +368,6 @@ function CategoryPageContent() {
                     <option value="high-low">Price: High to Low</option>
                   </select>
                 </div>
-
-                {/* Organic toggle */}
-                <button
-                  onClick={() => setOnlyOrganic(!onlyOrganic)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all duration-150 ${
-                    onlyOrganic
-                      ? "bg-primary/10 border-primary text-primary"
-                      : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  <Leaf className="h-3.5 w-3.5" />
-                  Organic
-                </button>
-
-                {/* Seasonal toggle */}
-                <button
-                  onClick={() => setOnlySeasonal(!onlySeasonal)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all duration-150 ${
-                    onlySeasonal
-                      ? "bg-primary/10 border-primary text-primary"
-                      : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  <Calendar className="h-3.5 w-3.5" />
-                  Seasonal
-                </button>
               </div>
             </div>
 
@@ -465,7 +375,7 @@ function CategoryPageContent() {
             <AnimatePresence mode="wait">
               {displayedProducts.length > 0 ? (
                 <motion.div
-                  key={activeCategory.id + sortOption + onlyOrganic + onlySeasonal + onlyExotic}
+                  key={activeCategory.id + sortOption}
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -15 }}

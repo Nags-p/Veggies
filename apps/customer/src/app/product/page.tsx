@@ -45,6 +45,7 @@ function ProductDetailsContent() {
           .from("products")
           .select("*")
           .eq("slug", slug)
+          .eq("is_hidden", false)
           .single();
 
         if (!error && data) {
@@ -138,21 +139,6 @@ function ProductDetailsContent() {
             <div className="space-y-4">
               {/* Badges row */}
               <div className="flex flex-wrap gap-1.5 items-center">
-                {product.is_organic && (
-                  <span className="bg-emerald-50 text-emerald-600 border border-emerald-100 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                    Organic
-                  </span>
-                )}
-                {product.is_seasonal && (
-                  <span className="bg-orange-50 text-orange-600 border border-orange-100 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                    Seasonal Best
-                  </span>
-                )}
-                {product.is_exotic && (
-                  <span className="bg-purple-50 text-purple-600 border border-purple-100 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                    Exotic
-                  </span>
-                )}
                 <span className="bg-slate-50 text-slate-500 border border-slate-150 text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                   <Zap className="h-3 w-3 fill-amber-400 text-amber-400 border-none" />
                   {product.delivery_time || "10 mins"}

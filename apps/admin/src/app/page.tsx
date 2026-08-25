@@ -4,7 +4,7 @@ import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { LayoutDashboard, ShoppingBasket, ShoppingCart, Tag, TrendingUp, AlertTriangle, Search, Plus, Edit, Trash2, Check, RefreshCw, Loader2, User, Bell, Settings } from "lucide-react";
+import { LayoutDashboard, ShoppingBasket, ShoppingCart, Tag, TrendingUp, AlertTriangle, Search, Plus, Edit, Trash2, Check, RefreshCw, Loader2, User, Bell, Settings, Eye, EyeOff } from "lucide-react";
 import Header from "@/components/Header";
 import { createClient } from "@/lib/supabase/client";
 import NotificationManager from "@/components/NotificationManager";
@@ -23,6 +23,7 @@ interface AdminProduct {
   is_organic?: boolean;
   is_seasonal?: boolean;
   is_exotic?: boolean;
+  is_hidden?: boolean;
 }
 
 interface AdminCategory {
@@ -221,7 +222,8 @@ function AdminPanelContent() {
       delivery_time: "10 mins",
       is_organic: false,
       is_seasonal: false,
-      is_exotic: false
+      is_exotic: false,
+      is_hidden: false
     });
   };
 
@@ -479,7 +481,8 @@ function AdminPanelContent() {
           delivery_time: p.delivery_time || "10 mins",
           is_organic: p.is_organic || false,
           is_seasonal: p.is_seasonal || false,
-          is_exotic: p.is_exotic || false
+          is_exotic: p.is_exotic || false,
+          is_hidden: p.is_hidden || false
         })));
       }
 
@@ -582,6 +585,20 @@ function AdminPanelContent() {
     await supabase.from("products").update({ stock: stockVal }).eq("id", id);
   };
 
+  // Handler: Toggle product visibility in database
+  const handleToggleProductVisibility = async (id: string, currentHidden: boolean) => {
+    const nextHidden = !currentHidden;
+    // Optimistic UI state update
+    setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, is_hidden: nextHidden } : p)));
+    
+    const { error } = await supabase.from("products").update({ is_hidden: nextHidden }).eq("id", id);
+    if (error) {
+      console.error("Failed to update product visibility:", error);
+      // Revert optimistic update on failure
+      setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, is_hidden: currentHidden } : p)));
+    }
+  };
+
   // Handler: Save product changes in database
   const handleSaveProduct = async (updated: AdminProduct) => {
     if (!updated.name.trim()) return;
@@ -613,7 +630,8 @@ function AdminPanelContent() {
             delivery_time: updated.delivery_time || "10 mins",
             is_organic: !!updated.is_organic,
             is_seasonal: !!updated.is_seasonal,
-            is_exotic: !!updated.is_exotic
+            is_exotic: !!updated.is_exotic,
+            is_hidden: !!updated.is_hidden
           });
 
         if (error) throw error;
@@ -626,6 +644,7 @@ function AdminPanelContent() {
                   ...updated, 
                   price: priceVal, 
                   original_price: originalPriceVal, 
+                  is_hidden: !!updated.is_hidden,
                   category: categories.find(c => c.id === updated.category_id)?.name || updated.category 
                 } 
               : p
@@ -646,7 +665,8 @@ function AdminPanelContent() {
             delivery_time: updated.delivery_time || "10 mins",
             is_organic: !!updated.is_organic,
             is_seasonal: !!updated.is_seasonal,
-            is_exotic: !!updated.is_exotic
+            is_exotic: !!updated.is_exotic,
+            is_hidden: !!updated.is_hidden
           })
           .eq("id", updated.id);
 
@@ -1204,75 +1224,116 @@ function AdminPanelContent() {
                             <th className="p-4">Category</th>
                             <th className="p-4">Price</th>
                             <th className="p-4">Stock</th>
+                            <th className="p-4 text-center">Status</th>
                             <th className="p-4 text-right">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
-                          {products
-                            .filter((p) => {
-                              const matchesSearch = p.name.toLowerCase().includes(productSearch.toLowerCase());
-                              const matchesCategory = productCategoryFilter === "all" || p.category_id === productCategoryFilter;
-                              return matchesSearch && matchesCategory;
-                            })
-                            .sort((a, b) => {
-                              if (productSortKey === "category") {
-                                const catCompare = a.category.localeCompare(b.category);
-                                if (catCompare !== 0) return catCompare;
+                          {products.filter((p) => {
+                            const matchesSearch = p.name.toLowerCase().includes(productSearch.toLowerCase());
+                            const matchesCategory = productCategoryFilter === "all" || p.category_id === productCategoryFilter;
+                            return matchesSearch && matchesCategory;
+                          }).length === 0 ? (
+                            <tr>
+                              <td colSpan={6} className="p-8 text-center text-slate-400 font-bold">
+                                <div className="flex flex-col items-center gap-1.5 justify-center py-4">
+                                  <span className="text-xl">🔍</span>
+                                  <span>No products found matching your filters.</span>
+                                </div>
+                              </td>
+                            </tr>
+                          ) : (
+                            products
+                              .filter((p) => {
+                                const matchesSearch = p.name.toLowerCase().includes(productSearch.toLowerCase());
+                                const matchesCategory = productCategoryFilter === "all" || p.category_id === productCategoryFilter;
+                                return matchesSearch && matchesCategory;
+                              })
+                              .sort((a, b) => {
+                                if (productSortKey === "category") {
+                                  const catCompare = a.category.localeCompare(b.category);
+                                  if (catCompare !== 0) return catCompare;
+                                  return a.name.localeCompare(b.name);
+                                }
+                                if (productSortKey === "price") {
+                                  return a.price - b.price;
+                                }
+                                if (productSortKey === "stock") {
+                                  return a.stock - b.stock;
+                                }
                                 return a.name.localeCompare(b.name);
-                              }
-                              if (productSortKey === "price") {
-                                return a.price - b.price;
-                              }
-                              if (productSortKey === "stock") {
-                                return a.stock - b.stock;
-                              }
-                              return a.name.localeCompare(b.name);
-                            })
-                            .map((p) => (
-                              <tr key={p.id} className="hover:bg-slate-50/50">
-                                <td className="p-4">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-slate-50 border border-slate-200 overflow-hidden flex items-center justify-center flex-shrink-0">
-                                      {p.images && p.images[0] ? (
-                                        <img
-                                          src={p.images[0]}
-                                          alt={p.name}
-                                          className="w-full h-full object-contain p-0.5"
-                                        />
+                              })
+                              .map((p) => (
+                                <tr key={p.id} className="hover:bg-slate-50/50">
+                                  <td className="p-4">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-10 h-10 rounded-lg bg-slate-50 border border-slate-200 overflow-hidden flex items-center justify-center flex-shrink-0">
+                                        {p.images && p.images[0] ? (
+                                          <img
+                                            src={p.images[0]}
+                                            alt={p.name}
+                                            className="w-full h-full object-contain p-0.5"
+                                          />
+                                        ) : (
+                                          <span className="text-[9px] font-bold text-slate-400">No Img</span>
+                                        )}
+                                      </div>
+                                      <div>
+                                        <span className="font-extrabold text-slate-900 block">{p.name}</span>
+                                        <span className="text-[10px] text-slate-400 font-medium">{p.weight}</span>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="p-4 text-slate-500">{p.category}</td>
+                                  <td className="p-4">
+                                    <span className="font-black text-slate-900">₹{p.price}</span>
+                                    {p.original_price > p.price && (
+                                      <span className="text-[10px] text-slate-400 line-through block font-medium">MRP: ₹{p.original_price}</span>
+                                    )}
+                                  </td>
+                                  <td className="p-4">
+                                    <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider inline-block ${
+                                      p.stock > 5 
+                                        ? "bg-green-50 text-green-600 border border-green-100" 
+                                        : p.stock > 0
+                                        ? "bg-amber-50 text-amber-600 border border-amber-100"
+                                        : "bg-red-50 text-red-600 border border-red-100"
+                                    }`}>
+                                      {p.stock > 0 ? `${p.stock} in stock` : "Out of Stock"}
+                                    </span>
+                                  </td>
+                                  <td className="p-4 text-center">
+                                    <button
+                                      onClick={() => handleToggleProductVisibility(p.id, !!p.is_hidden)}
+                                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all duration-150 border cursor-pointer ${
+                                        p.is_hidden
+                                          ? "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200"
+                                          : "bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100"
+                                      }`}
+                                      title={p.is_hidden ? "Show product in catalog" : "Hide product from catalog"}
+                                    >
+                                      {p.is_hidden ? (
+                                        <>
+                                          <EyeOff className="h-3 w-3 text-slate-400" /> Hidden
+                                        </>
                                       ) : (
-                                        <span className="text-[9px] font-bold text-slate-400">No Img</span>
+                                        <>
+                                          <Eye className="h-3 w-3 text-emerald-600" /> Visible
+                                        </>
                                       )}
-                                    </div>
-                                    <div>
-                                      <span className="font-extrabold text-slate-900 block">{p.name}</span>
-                                      <span className="text-[10px] text-slate-400 font-medium">{p.weight}</span>
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="p-4 text-slate-500">{p.category}</td>
-                                <td className="p-4">
-                                  <span className="font-black text-slate-900">₹{p.price}</span>
-                                  {p.original_price > p.price && (
-                                    <span className="text-[10px] text-slate-400 line-through block font-medium">MRP: ₹{p.original_price}</span>
-                                  )}
-                                </td>
-                                <td className="p-4">
-                                  <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider inline-block ${
-                                    p.stock > 0 ? "bg-green-50 text-green-600 border border-green-100" : "bg-red-50 text-red-600 border border-red-100"
-                                  }`}>
-                                    {p.stock > 0 ? `${p.stock} in stock` : "Out of Stock"}
-                                  </span>
-                                </td>
-                                <td className="p-4 text-right">
-                                  <button
-                                    onClick={() => setEditingProduct(p)}
-                                    className="inline-flex items-center gap-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-white font-extrabold text-[10px] px-3 py-1.5 rounded-lg transition-all cursor-pointer shadow-sm"
-                                  >
-                                    <Edit className="h-3 w-3" /> Edit
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
+                                    </button>
+                                  </td>
+                                  <td className="p-4 text-right">
+                                    <button
+                                      onClick={() => setEditingProduct(p)}
+                                      className="inline-flex items-center gap-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-white font-extrabold text-[10px] px-3 py-1.5 rounded-lg transition-all cursor-pointer shadow-sm"
+                                    >
+                                      <Edit className="h-3 w-3" /> Edit
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))
+                          )}
                         </tbody>
                       </table>
                     </div>
@@ -1345,13 +1406,35 @@ function AdminPanelContent() {
                               )}
                             </div>
                             
-                            <div className="flex flex-col items-end">
-                              <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider mb-1">Stock Status</span>
-                              <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded uppercase tracking-wider ${
-                                p.stock > 0 ? "bg-green-50 text-green-600 border border-green-100" : "bg-red-50 text-red-600 border border-red-100"
-                              }`}>
-                                {p.stock > 0 ? `${p.stock} Left` : "Out of Stock"}
-                              </span>
+                            <div className="flex items-center gap-4">
+                              <div className="flex flex-col items-end">
+                                <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider mb-1">Status</span>
+                                <button
+                                  onClick={() => handleToggleProductVisibility(p.id, !!p.is_hidden)}
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider transition-colors border cursor-pointer ${
+                                    p.is_hidden
+                                      ? "bg-slate-100 text-slate-500 border-slate-200"
+                                      : "bg-emerald-50 text-emerald-700 border-emerald-100"
+                                  }`}
+                                  title={p.is_hidden ? "Show product" : "Hide product"}
+                                >
+                                  {p.is_hidden ? <EyeOff className="h-2.5 w-2.5 text-slate-400" /> : <Eye className="h-2.5 w-2.5 text-emerald-600" />}
+                                  {p.is_hidden ? "Hidden" : "Visible"}
+                                </button>
+                              </div>
+
+                              <div className="flex flex-col items-end">
+                                <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider mb-1">Stock Status</span>
+                                <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded uppercase tracking-wider ${
+                                  p.stock > 5 
+                                    ? "bg-green-50 text-green-600 border border-green-100" 
+                                    : p.stock > 0
+                                    ? "bg-amber-50 text-amber-600 border border-amber-100"
+                                    : "bg-red-50 text-red-600 border border-red-100"
+                                }`}>
+                                  {p.stock > 0 ? `${p.stock} Left` : "Out of Stock"}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1899,34 +1982,16 @@ function AdminPanelContent() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider">Product Tags</label>
-                    <div className="flex flex-wrap gap-2.5 pt-1.5">
-                      <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-700 select-none">
+                    <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider">Product Status</label>
+                    <div className="pt-1.5">
+                      <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-700 select-none" title="Hide product from customer store catalog">
                         <input
                           type="checkbox"
-                          checked={!!editingProduct.is_organic}
-                          onChange={(e) => setEditingProduct({ ...editingProduct, is_organic: e.target.checked })}
+                          checked={!!editingProduct.is_hidden}
+                          onChange={(e) => setEditingProduct({ ...editingProduct, is_hidden: e.target.checked })}
                           className="rounded border-slate-300 text-primary focus:ring-primary h-3.5 w-3.5"
                         />
-                        Organic
-                      </label>
-                      <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-700 select-none">
-                        <input
-                          type="checkbox"
-                          checked={!!editingProduct.is_seasonal}
-                          onChange={(e) => setEditingProduct({ ...editingProduct, is_seasonal: e.target.checked })}
-                          className="rounded border-slate-300 text-primary focus:ring-primary h-3.5 w-3.5"
-                        />
-                        Seasonal
-                      </label>
-                      <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-700 select-none">
-                        <input
-                          type="checkbox"
-                          checked={!!editingProduct.is_exotic}
-                          onChange={(e) => setEditingProduct({ ...editingProduct, is_exotic: e.target.checked })}
-                          className="rounded border-slate-300 text-primary focus:ring-primary h-3.5 w-3.5"
-                        />
-                        Exotic
+                        Hide from catalog (Visible otherwise)
                       </label>
                     </div>
                   </div>

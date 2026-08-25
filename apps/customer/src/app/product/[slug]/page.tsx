@@ -21,7 +21,7 @@ export async function generateStaticParams() {
     
     if (supabaseUrl && supabaseAnonKey) {
       const supabase = createClient();
-      const { data } = await supabase.from("products").select("slug");
+      const { data } = await supabase.from("products").select("slug").eq("is_hidden", false);
       if (data && data.length > 0) {
         const slugs = data.map((p: any) => p.slug).filter(Boolean);
         if (slugs.length > 0) {

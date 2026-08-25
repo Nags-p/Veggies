@@ -20,7 +20,7 @@ export default function NotificationManager() {
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [imageUrl, setImageUrl] = useState("");
-  const [redirectType, setRedirectType] = useState<"none" | "home" | "cart" | "profile" | "product" | "custom">("none");
+  const [redirectType, setRedirectType] = useState<"none" | "home" | "cart" | "profile" | "product" | "custom">("home");
   const [selectedProductSlug, setSelectedProductSlug] = useState("");
   const [customRedirectPath, setCustomRedirectPath] = useState("");
   const [type, setType] = useState<"promo" | "general">("promo");

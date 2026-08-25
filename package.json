@@ -10,7 +10,9 @@
     "dev:customer": "npm run dev --workspace=apps/customer",
     "dev:admin": "npm run dev --workspace=apps/admin",
     "build:customer": "npm run build --workspace=apps/customer",
-    "build:admin": "npm run build --workspace=apps/admin"
+    "build:admin": "npm run build --workspace=apps/admin",
+    "start:customer": "npm run start --workspace=apps/customer",
+    "start:admin": "npm run start --workspace=apps/admin"
   },
   "dependencies": {
     "@supabase/ssr": "^0.3.0",
