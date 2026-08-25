@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, Zap, Heart, Shield, RefreshCw, ShoppingCart, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useCart } from "@/context/CartContext";
+import { useData } from "@/context/DataContext";
 import FooterNav from "@/components/FooterNav";
 
 interface Product {
@@ -31,10 +32,12 @@ function ProductDetailsContent() {
   const slug = searchParams.get("slug");
   const supabase = createClient();
   const { cart, addToCart } = useCart();
+  const { wishlist, toggleWishlist } = useData();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isLiked, setIsLiked] = useState(false);
+
+  const isLiked = product ? wishlist.includes(product.id) : false;
 
   useEffect(() => {
     if (!slug) return;
@@ -123,7 +126,7 @@ function ProductDetailsContent() {
             />
             {/* Absolute Badges */}
             <button
-              onClick={() => setIsLiked(!isLiked)}
+              onClick={() => toggleWishlist(product.id)}
               className="absolute top-4 right-4 p-2 rounded-full bg-white border border-slate-100 hover:bg-red-50 hover:border-red-100 transition-colors shadow-sm cursor-pointer z-10"
             >
               <Heart

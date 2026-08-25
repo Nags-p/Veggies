@@ -47,14 +47,17 @@ interface DataContextType {
   orders: Order[];
   profile: Profile | null;
   addresses: Address[];
+  wishlist: string[];
   dbLoading: boolean;
   ordersLoading: boolean;
   profileLoading: boolean;
   refreshProducts: () => Promise<void>;
   refreshOrders: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  refreshWishlist: () => Promise<void>;
   updateProfileLocal: (updated: Partial<Profile>) => void;
   setDbOrdersLocal: React.Dispatch<React.SetStateAction<Order[]>>;
+  toggleWishlist: (productId: string) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -67,6 +70,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [addresses, setAddresses] = useState<Address[]>([]);
+  const [wishlist, setWishlist] = useState<string[]>([]);
 
   const [dbLoading, setDbLoading] = useState(true);
   const [ordersLoading, setOrdersLoading] = useState(true);
@@ -262,22 +266,84 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Fetch wishlist favorites
+  const fetchWishlist = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setWishlist([]);
+        return;
+      }
+      const { data, error } = await supabase
+        .from("wishlist")
+        .select("product_id")
+        .eq("profile_id", user.id);
+
+      if (error) throw error;
+      if (data) {
+        setWishlist(data.map((item: any) => item.product_id));
+      }
+    } catch (err) {
+      console.error("Failed to load wishlist:", err);
+    }
+  };
+
+  // Add/Remove from wishlist
+  const toggleWishlist = async (productId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert("Please log in to add products to your wishlist");
+        return;
+      }
+
+      const isWishlisted = wishlist.includes(productId);
+
+      if (isWishlisted) {
+        const { error } = await supabase
+          .from("wishlist")
+          .delete()
+          .eq("profile_id", user.id)
+          .eq("product_id", productId);
+
+        if (error) throw error;
+        setWishlist((prev) => prev.filter((id) => id !== productId));
+      } else {
+        const { error } = await supabase
+          .from("wishlist")
+          .insert({
+            profile_id: user.id,
+            product_id: productId
+          });
+
+        if (error) throw error;
+        setWishlist((prev) => [...prev, productId]);
+      }
+    } catch (err: any) {
+      console.error("Failed to update wishlist:", err);
+      alert(err.message || "Failed to update wishlist");
+    }
+  };
+
   useEffect(() => {
     // Initial fetch of public database content
     fetchProductsAndCategories();
     // Initial fetch of authenticated content
     fetchProfileAndAddresses();
     fetchOrders();
+    fetchWishlist();
 
     // Listen for auth state changes to reload user data
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN") {
         fetchProfileAndAddresses();
         fetchOrders();
+        fetchWishlist();
       } else if (event === "SIGNED_OUT") {
         setProfile(null);
         setAddresses([]);
         setOrders([]);
+        setWishlist([]);
       }
     });
 
@@ -298,14 +364,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         orders,
         profile,
         addresses,
+        wishlist,
         dbLoading,
         ordersLoading,
         profileLoading,
         refreshProducts: fetchProductsAndCategories,
         refreshOrders: fetchOrders,
         refreshProfile: fetchProfileAndAddresses,
+        refreshWishlist: fetchWishlist,
         updateProfileLocal,
-        setDbOrdersLocal: setOrders
+        setDbOrdersLocal: setOrders,
+        toggleWishlist
       }}
     >
       {children}

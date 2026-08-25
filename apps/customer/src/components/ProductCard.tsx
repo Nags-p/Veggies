@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Heart, Plus, Minus, Zap } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useStore } from "@/context/StoreContext";
+import { useData } from "@/context/DataContext";
 
 export type Product = {
   id: string;
@@ -33,9 +34,11 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, onAddToCart }: ProductCardProps) {
-  const [isLiked, setIsLiked] = useState(false);
   const { cart, addToCart } = useCart();
   const { isStoreOpen } = useStore();
+  const { wishlist, toggleWishlist } = useData();
+
+  const isLiked = wishlist.includes(product.id);
 
   const cartItem = cart.find((item) => item.product.id === product.id);
   const quantity = cartItem ? cartItem.quantity : 0;
@@ -71,7 +74,7 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
       <div className="flex justify-between items-start mb-2">
         <span />
         <button
-          onClick={() => setIsLiked(!isLiked)}
+          onClick={() => toggleWishlist(product.id)}
           className="p-1.5 rounded-full bg-slate-50 border border-slate-100 hover:bg-red-50 hover:border-red-100 transition-colors duration-150"
         >
           <Heart

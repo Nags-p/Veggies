@@ -447,16 +447,23 @@ export default function AddressManager() {
 
               {/* Service area check */}
               {distance > 0 && (
-                <div className={`p-3 rounded-xl border text-[11px] font-bold flex gap-2 items-start ${
-                  isWithinServiceArea ? "bg-emerald-50/50 border-emerald-100 text-emerald-800" : "bg-red-50/50 border-red-100 text-red-800"
+                <div className={`p-3.5 rounded-2xl border text-[11px] font-semibold text-left space-y-1 ${
+                  isWithinServiceArea 
+                    ? "bg-emerald-50 border-emerald-100 text-emerald-805" 
+                    : "bg-rose-50 border-rose-100 text-rose-805"
                 }`}>
-                  <MapPin className="h-4 w-4 mt-0.5" />
-                  <div>
-                    <span className="block font-black">{isWithinServiceArea ? "Within Delivery Range!" : "Outside Delivery Range"}</span>
-                    <span className="block font-medium mt-0.5">
-                      This location is {distance.toFixed(2)} KM from our store. {isWithinServiceArea ? "Delivery in 10 mins." : "We only deliver within our serviceable range. You can still save it."}
+                  <div className="flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full ${isWithinServiceArea ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
+                    <span className="font-extrabold uppercase tracking-wide text-[9px]">
+                      {isWithinServiceArea ? "Serviceable Area" : "Unserviceable Area"}
                     </span>
                   </div>
+                  <p className="leading-relaxed">
+                    {isWithinServiceArea 
+                      ? `This location is approx. ${distance.toFixed(2)} KM from our store. Delivery is active!` 
+                      : `This location is ${distance.toFixed(2)} KM from our store. We only deliver within 2.0 KM of Malleshwaram.`
+                    }
+                  </p>
                 </div>
               )}
 
@@ -542,8 +549,8 @@ export default function AddressManager() {
                 </button>
                 <button
                   type="submit"
-                  disabled={saving}
-                  className="flex-1 bg-primary hover:bg-primary-dark disabled:bg-slate-300 text-white font-extrabold text-xs py-3 rounded-button shadow-premium transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  disabled={saving || !isWithinServiceArea}
+                  className="flex-1 bg-primary hover:bg-primary-dark disabled:bg-slate-200 disabled:text-slate-450 disabled:cursor-not-allowed text-white font-extrabold text-xs py-3 rounded-button shadow-premium transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   {saving && <Loader2 className="h-4 w-4 animate-spin" />}
                   <span>{saving ? "Saving..." : (editingAddressId ? "Save Changes" : "Save Address")}</span>
