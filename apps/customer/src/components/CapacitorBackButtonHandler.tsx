@@ -7,6 +7,16 @@ export default function CapacitorBackButtonHandler() {
   const pathname = usePathname();
 
   useEffect(() => {
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+    };
+    document.addEventListener("contextmenu", handleContextMenu);
+    return () => {
+      document.removeEventListener("contextmenu", handleContextMenu);
+    };
+  }, []);
+
+  useEffect(() => {
     let appListener: any = null;
 
     async function initBackButton() {

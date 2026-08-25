@@ -294,7 +294,7 @@ export default function CartPage() {
         discount_amount: couponDiscount,
         net_amount: grandTotal,
         status: "pending",
-        payment_method: "COD",
+        payment_method: paymentMethod === "cod" ? "COD" : "Online",
         payment_status: "pending",
         coupon_code: appliedCoupon?.code || null
       };
@@ -335,6 +335,20 @@ export default function CartPage() {
     } finally {
       setCheckoutLoading(false);
     }
+  };
+
+  // Intercept place order button click to trigger reconfirmation modal drawer
+  const handlePlaceOrderClick = () => {
+    if (!userId) {
+      router.push("/login");
+      return;
+    }
+    if (!selectedAddressId) {
+      setShowAddressDrawer(true);
+      return;
+    }
+    // Prompt payment reconfirmation drawer
+    setShowPaymentDrawer(true);
   };
 
   return (
@@ -619,7 +633,7 @@ export default function CartPage() {
 
                   {/* Desktop Only Place Order Button */}
                   <button
-                    onClick={handlePlaceOrder}
+                    onClick={handlePlaceOrderClick}
                     disabled={checkoutLoading || cart.length === 0 || !selectedAddressId}
                     className="w-full bg-primary hover:bg-primary-dark text-white font-extrabold py-3.5 px-4 rounded-button shadow-premium transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed hidden md:flex"
                   >
@@ -671,7 +685,7 @@ export default function CartPage() {
 
             {/* Place Order Trigger */}
             <button
-              onClick={handlePlaceOrder}
+              onClick={handlePlaceOrderClick}
               disabled={checkoutLoading || cart.length === 0 || !selectedAddressId}
               className="flex-1 bg-primary hover:bg-primary-dark text-white font-extrabold py-3.5 px-4 rounded-2xl shadow-premium transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-xs active:scale-[0.98]"
             >
@@ -1077,50 +1091,73 @@ export default function CartPage() {
               </div>
 
               {/* Drawer Content */}
-              <div className="p-5 space-y-3.5 animate-none">
-                {/* Cash on Delivery option */}
-                <div
-                  onClick={() => {
-                    setPaymentMethod("cod");
-                    setShowPaymentDrawer(false);
-                  }}
-                  className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-start gap-3.5 text-left ${
-                    paymentMethod === "cod"
-                      ? "bg-emerald-50/20 border-primary shadow-sm"
-                      : "bg-slate-50/30 border-slate-100 hover:bg-slate-50"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    readOnly
-                    checked={paymentMethod === "cod"}
-                    className="text-primary focus:ring-primary h-4.5 w-4.5 mt-0.5 pointer-events-none"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-xs font-black text-slate-800 block">Cash on Delivery / Pay on Delivery</span>
-                    <p className="text-[10px] font-bold text-slate-500 mt-1 leading-snug">
-                      Pay via Cash, UPI QR code, or cards at the time of delivery.
-                    </p>
+              <div className="p-5 space-y-4 animate-none">
+                <div className="space-y-3">
+                  {/* Cash on Delivery option */}
+                  <div
+                    onClick={() => {
+                      setPaymentMethod("cod");
+                    }}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-start gap-3.5 text-left ${
+                      paymentMethod === "cod"
+                        ? "bg-emerald-50/20 border-primary shadow-sm"
+                        : "bg-slate-50/30 border-slate-100 hover:bg-slate-50"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      readOnly
+                      checked={paymentMethod === "cod"}
+                      className="text-primary focus:ring-primary h-4.5 w-4.5 mt-0.5 pointer-events-none"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-xs font-black text-slate-800 block">Cash on Delivery / Pay on Delivery</span>
+                      <p className="text-[10px] font-bold text-slate-500 mt-1 leading-snug">
+                        Pay via Cash, UPI QR code, or cards at the time of delivery.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Online Payment option (disabled) */}
+                  <div
+                    className="p-4 rounded-2xl border border-slate-100/80 bg-slate-50/50 opacity-60 flex items-start gap-3.5 cursor-not-allowed text-left"
+                  >
+                    <input
+                      type="radio"
+                      disabled
+                      checked={false}
+                      className="text-slate-300 h-4.5 w-4.5 mt-0.5"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-xs font-black text-slate-400 block">Online Payment (Credit/Debit/UPI)</span>
+                      <p className="text-[10px] font-bold text-slate-400 mt-1 leading-snug">
+                        Online payment gateway is temporarily offline for maintenance.
+                      </p>
+                    </div>
                   </div>
                 </div>
 
-                {/* Online Payment option (disabled) */}
-                <div
-                  className="p-4 rounded-2xl border border-slate-100/80 bg-slate-50/50 opacity-60 flex items-start gap-3.5 cursor-not-allowed text-left"
+                {/* Confirm & Place Order Action Button */}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setShowPaymentDrawer(false);
+                    await handlePlaceOrder();
+                  }}
+                  disabled={checkoutLoading}
+                  className="w-full bg-primary hover:bg-primary-dark text-white font-extrabold py-3.5 px-4 rounded-2xl shadow-premium transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-xs active:scale-[0.98] mt-2.5"
                 >
-                  <input
-                    type="radio"
-                    disabled
-                    checked={false}
-                    className="text-slate-300 h-4.5 w-4.5 mt-0.5"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-xs font-black text-slate-400 block">Online Payment (Credit/Debit/UPI)</span>
-                    <p className="text-[10px] font-bold text-slate-400 mt-1 leading-snug">
-                      Online payment gateway is temporarily offline for maintenance.
-                    </p>
-                  </div>
-                </div>
+                  {checkoutLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" /> Placing Order...
+                    </>
+                  ) : (
+                    <>
+                      <span>Confirm & Place Order • ₹{grandTotal}</span>
+                      <ArrowRight className="h-4 w-4" />
+                    </>
+                  )}
+                </button>
               </div>
             </motion.div>
           </>
