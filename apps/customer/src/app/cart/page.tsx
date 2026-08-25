@@ -52,6 +52,7 @@ export default function CartPage() {
 
   // Payment Option
   const [paymentMethod, setPaymentMethod] = useState("cod");
+  const [showPaymentDrawer, setShowPaymentDrawer] = useState(false);
 
   // General checkout state
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -476,41 +477,6 @@ export default function CartPage() {
                   </div>
                 </div>
 
-                {/* Payment Option */}
-                <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-card text-left">
-                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block mb-4">
-                    Select Payment Method
-                  </span>
-                  <div className="space-y-2.5">
-                    {/* COD */}
-                    <label className="flex items-center gap-3 p-3 bg-emerald-50/30 border border-primary rounded-xl cursor-pointer">
-                      <input
-                        type="radio"
-                        checked={paymentMethod === "cod"}
-                        onChange={() => setPaymentMethod("cod")}
-                        className="text-primary focus:ring-primary h-4 w-4"
-                      />
-                      <div className="flex-1">
-                        <span className="text-xs font-extrabold text-slate-800 block">Cash on Delivery / Pay on Delivery</span>
-                        <span className="text-[10px] text-slate-500 font-bold">Pay via Cash, UPI, or Cards when order is delivered.</span>
-                      </div>
-                    </label>
-
-                    {/* Online Payments - Disabled */}
-                    <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200/60 rounded-xl opacity-50 cursor-not-allowed">
-                      <input
-                        type="radio"
-                        disabled
-                        checked={false}
-                        className="text-slate-300 h-4 w-4"
-                      />
-                      <div className="flex-1">
-                        <span className="text-xs font-extrabold text-slate-400 block">Online Payment</span>
-                        <span className="text-[10px] text-slate-400 font-bold">Temporarily Unavailable</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
 
               {/* Right Column: Pricing Summary & Coupons */}
@@ -637,6 +603,20 @@ export default function CartPage() {
                     </div>
                   )}
 
+                  {/* Desktop Payment Selector Trigger */}
+                  <div 
+                    onClick={() => setShowPaymentDrawer(true)}
+                    className="p-3 bg-slate-50 border border-slate-100 hover:border-slate-200 rounded-xl flex items-center justify-between cursor-pointer hover:bg-slate-100/75 transition-all mb-4 hidden md:flex text-left"
+                  >
+                    <div>
+                      <span className="text-[9px] font-black text-slate-450 uppercase tracking-wider block">Payment Method</span>
+                      <span className="text-xs font-black text-slate-850 mt-0.5 block">
+                        {paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment"}
+                      </span>
+                    </div>
+                    <span className="text-[9px] text-primary font-black underline">CHANGE</span>
+                  </div>
+
                   {/* Desktop Only Place Order Button */}
                   <button
                     onClick={handlePlaceOrder}
@@ -649,7 +629,7 @@ export default function CartPage() {
                       </>
                     ) : (
                       <>
-                        Place Order (COD) <ArrowRight className="h-4.5 w-4.5" />
+                        Place Order ({paymentMethod === "cod" ? "COD" : "Online"}) <ArrowRight className="h-4.5 w-4.5" />
                       </>
                     )}
                   </button>
@@ -673,13 +653,19 @@ export default function CartPage() {
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-100 py-3.5 px-4 shadow-[0_-8px_30px_rgb(0,0,0,0.05)] md:hidden">
           <div className="max-w-md mx-auto flex items-center justify-between gap-4">
             {/* Payment Selection Indicator */}
-            <div className="text-left space-y-0.5">
+            <div 
+              onClick={() => setShowPaymentDrawer(true)}
+              className="text-left space-y-0.5 cursor-pointer hover:bg-slate-50/80 p-1 rounded-xl transition-all border border-transparent hover:border-slate-100 flex-shrink-0"
+            >
               <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Payment Method</span>
               <div className="flex items-center gap-1">
-                <span className="text-xs font-black text-slate-800">Cash on Delivery</span>
-                <span className="text-[8px] font-black bg-emerald-100 text-emerald-700 border border-emerald-250 px-1 rounded uppercase">
-                  COD
+                <span className="text-xs font-black text-slate-800">
+                  {paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment"}
                 </span>
+                <span className="text-[8px] font-black bg-emerald-100 text-emerald-700 border border-emerald-250 px-1 rounded uppercase">
+                  {paymentMethod === "cod" ? "COD" : "Online"}
+                </span>
+                <span className="text-[8px] text-primary font-black underline ml-0.5">CHANGE</span>
               </div>
             </div>
 
@@ -1045,6 +1031,96 @@ export default function CartPage() {
                     )}
                   </div>
                 )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Payment Selection Bottom Sheet Drawer */}
+      <AnimatePresence>
+        {showPaymentDrawer && (
+          <>
+            {/* Backdrop overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowPaymentDrawer(false)}
+              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+            />
+
+            {/* Bottom Sheet Drawer */}
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 250 }}
+              className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-[32px] shadow-2xl border-t border-slate-100 max-w-md mx-auto overflow-hidden flex flex-col max-h-[80vh] text-left"
+            >
+              {/* Drawer Header */}
+              <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div className="flex items-center gap-2">
+                  <Tag className="h-5 w-5 text-primary" />
+                  <h3 className="text-sm font-black text-slate-800">
+                    Select Payment Method
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setShowPaymentDrawer(false)}
+                  className="p-1 hover:bg-slate-200 rounded-full transition-colors text-slate-400 hover:text-slate-650 cursor-pointer animate-none"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Drawer Content */}
+              <div className="p-5 space-y-3.5 animate-none">
+                {/* Cash on Delivery option */}
+                <div
+                  onClick={() => {
+                    setPaymentMethod("cod");
+                    setShowPaymentDrawer(false);
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-start gap-3.5 text-left ${
+                    paymentMethod === "cod"
+                      ? "bg-emerald-50/20 border-primary shadow-sm"
+                      : "bg-slate-50/30 border-slate-100 hover:bg-slate-50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    readOnly
+                    checked={paymentMethod === "cod"}
+                    className="text-primary focus:ring-primary h-4.5 w-4.5 mt-0.5 pointer-events-none"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-xs font-black text-slate-800 block">Cash on Delivery / Pay on Delivery</span>
+                    <p className="text-[10px] font-bold text-slate-500 mt-1 leading-snug">
+                      Pay via Cash, UPI QR code, or cards at the time of delivery.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Online Payment option (disabled) */}
+                <div
+                  className="p-4 rounded-2xl border border-slate-100/80 bg-slate-50/50 opacity-60 flex items-start gap-3.5 cursor-not-allowed text-left"
+                >
+                  <input
+                    type="radio"
+                    disabled
+                    checked={false}
+                    className="text-slate-300 h-4.5 w-4.5 mt-0.5"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-xs font-black text-slate-400 block">Online Payment (Credit/Debit/UPI)</span>
+                    <p className="text-[10px] font-bold text-slate-400 mt-1 leading-snug">
+                      Online payment gateway is temporarily offline for maintenance.
+                    </p>
+                  </div>
+                </div>
               </div>
             </motion.div>
           </>
