@@ -8,6 +8,7 @@ import { DataProvider } from "@/context/DataContext";
 import LocationModal from "@/components/LocationModal";
 import CapacitorBackButtonHandler from "@/components/CapacitorBackButtonHandler";
 import CapacitorPushNotificationHandler from "@/components/CapacitorPushNotificationHandler";
+import CapacitorUpdateChecker from "@/components/CapacitorUpdateChecker";
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -49,6 +50,7 @@ export default function RootLayout({
                 <LocationModal />
                 <CapacitorBackButtonHandler />
                 <CapacitorPushNotificationHandler />
+                <CapacitorUpdateChecker />
               </CartProvider>
             </DataProvider>
           </LocationProvider>
