@@ -4,6 +4,19 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Product } from "@/components/ProductCard";
 
+export function getAssetPath(path: string): string {
+  if (typeof window !== "undefined") {
+    const pathname = window.location.pathname;
+    if (pathname.includes("/Veggies/customer")) {
+      return `/Veggies/customer${path}`;
+    }
+    if (pathname.includes("/veggies/customer")) {
+      return `/veggies/customer${path}`;
+    }
+  }
+  return path;
+}
+
 interface Order {
   id: string;
   displayId: string;
@@ -115,12 +128,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             "exotic-veggies": "🥑",
           };
           const catImages: Record<string, string> = {
-            "fresh-fruits": "/images/categories/fresh-fruits.jpg",
-            "fresh-vegetables": "/images/categories/fresh-vegetables.jpg",
-            "organic-greens": "/images/categories/organic-greens.jpg",
-            "leafy-vegetables": "/images/categories/leafy-vegetables.jpg",
-            "seasonal-delights": "/images/categories/seasonal-delights.jpg",
-            "exotic-veggies": "/images/categories/exotic-veggies.jpg"
+            "fresh-fruits": getAssetPath("/images/categories/fresh-fruits.jpg"),
+            "fresh-vegetables": getAssetPath("/images/categories/fresh-vegetables.jpg"),
+            "organic-greens": getAssetPath("/images/categories/organic-greens.jpg"),
+            "leafy-vegetables": getAssetPath("/images/categories/leafy-vegetables.jpg"),
+            "seasonal-delights": getAssetPath("/images/categories/seasonal-delights.jpg"),
+            "exotic-veggies": getAssetPath("/images/categories/exotic-veggies.jpg")
           };
           const mappedCats = catData.map((c: any) => {
             const count = mappedProducts.filter((p: any) => p.category_id === c.id).length;
@@ -129,7 +142,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
               name: c.name,
               slug: c.slug,
               icon: iconMap[c.slug] || "🥦",
-              imageUrl: catImages[c.slug] || "/images/categories/fresh-vegetables.jpg",
+              imageUrl: catImages[c.slug] || getAssetPath("/images/categories/fresh-vegetables.jpg"),
               dbCategoryId: c.id,
               count: `${count} ${count === 1 ? 'item' : 'items'}`,
               itemCountValue: count
@@ -141,7 +154,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
               name: "All",
               slug: "all",
               icon: "🥦",
-              imageUrl: "/images/categories/fresh-vegetables.jpg",
+              imageUrl: getAssetPath("/images/categories/fresh-vegetables.jpg"),
               dbCategoryId: null,
               count: `${mappedProducts.length} items`
             },
