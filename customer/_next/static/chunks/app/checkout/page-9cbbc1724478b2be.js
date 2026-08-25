@@ -88,4 +88,4 @@
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
- */let r=(0,s(9565).Z)("User",[["path",{d:"M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2",key:"975kel"}],["circle",{cx:"12",cy:"7",r:"4",key:"17ys0d"}]])}},function(e){e.O(0,[93,297,659,782,549,293,286,744],function(){return e(e.s=370)}),_N_E=e.O()}]);
+ */let r=(0,s(9565).Z)("User",[["path",{d:"M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2",key:"975kel"}],["circle",{cx:"12",cy:"7",r:"4",key:"17ys0d"}]])}},function(e){e.O(0,[93,297,676,782,549,293,286,744],function(){return e(e.s=370)}),_N_E=e.O()}]);
