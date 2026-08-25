@@ -141,10 +141,8 @@ export default function CapacitorPushNotificationHandler() {
                 return;
               }
 
-              // Fallback: open notifications page if we clicked a general notification
-              if (notificationId) {
-                router.push("/notifications");
-              }
+              // Fallback: open homepage by default on click
+              router.push("/");
             }
           );
 
@@ -154,9 +152,7 @@ export default function CapacitorPushNotificationHandler() {
             async (action) => {
               console.log("Local notification action performed:", action);
               const extra = action.notification.extra;
-              if (!extra) return;
-
-              const notificationId = extra.notificationId;
+              const notificationId = extra?.notificationId;
               if (notificationId) {
                 try {
                   const { error } = await supabase
@@ -169,22 +165,20 @@ export default function CapacitorPushNotificationHandler() {
                 }
               }
 
-              const redirectTo = extra.redirectTo;
+              const redirectTo = extra?.redirectTo;
               if (redirectTo) {
                 router.push(redirectTo);
                 return;
               }
 
-              const orderId = extra.orderId;
+              const orderId = extra?.orderId;
               if (orderId) {
                 router.push(`/orders/track?id=${orderId}`);
                 return;
               }
 
-              // Fallback: open notifications page if we clicked a general notification
-              if (notificationId) {
-                router.push("/notifications");
-              }
+              // Fallback: open homepage by default on click
+              router.push("/");
             }
           );
         } catch (err) {

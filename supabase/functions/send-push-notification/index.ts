@@ -157,7 +157,6 @@ Deno.serve(async (req) => {
         }
 
         fcmPayload.message.android.notification = {
-          click_action: "FCM_PLUGIN_ACTIVITY",
           sound: "default",
           channel_id: "customer_order_alerts",
         };
