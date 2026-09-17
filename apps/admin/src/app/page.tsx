@@ -766,14 +766,6 @@ function AdminPanelContent() {
         return curr;
       });
 
-      setIncomingOrdersQueue((prev) => {
-        const nextQueue = prev.filter((o) => o.db_id !== dbId);
-        if (nextQueue.length === 0) {
-          setShowFullScreenNotification(false);
-        }
-        return nextQueue;
-      });
-
       const { error } = await supabase
         .from("orders")
         .update({ status: "cancelled", cancel_reason: reason })
