@@ -165,16 +165,7 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
-  // Request startup permissions for notifications
-  useEffect(() => {
-    if (typeof window !== "undefined" && "Notification" in window) {
-      if (Notification.permission === "default") {
-        Notification.requestPermission().catch((err) => {
-          console.error("Error requesting notification permission:", err);
-        });
-      }
-    }
-  }, []);
+
 
   // Restore or check location on startup and auth changes
   useEffect(() => {

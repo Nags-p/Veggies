@@ -87,6 +87,7 @@ export type Order = {
   delivery_partner_id?: string | null;
   delivery_otp?: string | null;
   cod_collected?: boolean;
+  cancel_reason?: string | null;
   packed_at?: string | null;
   delivered_at?: string | null;
   created_at: string;

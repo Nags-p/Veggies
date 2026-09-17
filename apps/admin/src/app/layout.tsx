@@ -4,7 +4,6 @@ import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
 import { LocationProvider } from "@/context/LocationContext";
 import LocationModal from "@/components/LocationModal";
-import CapacitorPushNotificationHandler from "@/components/CapacitorPushNotificationHandler";
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -42,7 +41,6 @@ export default function RootLayout({
           <CartProvider>
             {children}
             <LocationModal />
-            <CapacitorPushNotificationHandler />
           </CartProvider>
         </LocationProvider>
       </body>

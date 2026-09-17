@@ -10,6 +10,7 @@ import { useCart } from "@/context/CartContext";
 import { createClient } from "@/lib/supabase/client";
 import FooterNav from "@/components/FooterNav";
 import { useLocation } from "@/context/LocationContext";
+import { useStore } from "@/context/StoreContext";
 
 function CartContent() {
   const router = useRouter();
@@ -17,6 +18,7 @@ function CartContent() {
   const couponParam = searchParams.get("coupon");
   const supabase = createClient();
   const { storeLocation } = useLocation();
+  const { isStoreOpen, storeStatus, storeTimings } = useStore();
   const {
     cart,
     updateQuantity,
@@ -311,6 +313,14 @@ function CartContent() {
 
   // Place Order transaction
   const handlePlaceOrder = async () => {
+    if (!isStoreOpen) {
+      setErrorMessage(
+        storeStatus?.closed_reason
+          ? `Store is currently closed: ${storeStatus.closed_reason}`
+          : "Store is currently closed and not accepting orders."
+      );
+      return;
+    }
     if (!userId) {
       router.push("/login");
       return;
@@ -377,6 +387,14 @@ function CartContent() {
 
   // Intercept place order button click to trigger reconfirmation modal drawer
   const handlePlaceOrderClick = () => {
+    if (!isStoreOpen) {
+      setErrorMessage(
+        storeStatus?.closed_reason
+          ? `Store is currently closed: ${storeStatus.closed_reason}`
+          : "Store is currently closed and not accepting orders."
+      );
+      return;
+    }
     if (!userId) {
       router.push("/login");
       return;
@@ -456,6 +474,35 @@ function CartContent() {
       </div>
 
       <main className="max-w-4xl mx-auto px-4 md:px-8 py-6 space-y-6">
+        {/* Store Closed Banner */}
+        {!isStoreOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-4 rounded-2xl bg-gradient-to-r from-red-500/10 via-rose-500/10 to-amber-500/10 border-2 border-red-500/30 text-red-950 shadow-sm space-y-1.5"
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-3 w-3 relative flex-shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600"></span>
+              </span>
+              <h3 className="text-sm font-black text-red-700 tracking-tight flex items-center gap-1.5">
+                <span>Store is Currently Closed for Orders</span>
+              </h3>
+            </div>
+            <p className="text-xs font-bold text-red-700/90 leading-relaxed pl-5.5">
+              {storeStatus?.closed_reason
+                ? storeStatus.closed_reason
+                : "We are temporarily not taking new orders right now. You can keep items in your cart and checkout once the store reopens."}
+            </p>
+            {storeStatus?.reopen_at && (
+              <p className="text-[11px] font-black text-red-600 pl-5.5 flex items-center gap-1">
+                <span>⏱️ Reopening Notice:</span>
+                <span>{storeStatus.reopen_at}</span>
+              </p>
+            )}
+          </motion.div>
+        )}
 
         {cart.length === 0 ? (
           /* Empty State */
@@ -733,13 +780,19 @@ function CartContent() {
                   {/* Desktop Only Place Order Button */}
                   <button
                     onClick={handlePlaceOrderClick}
-                    disabled={checkoutLoading || cart.length === 0 || !selectedAddressId}
-                    className="w-full bg-primary hover:bg-primary-dark text-white font-extrabold py-3.5 px-4 rounded-button shadow-premium transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed hidden md:flex"
+                    disabled={checkoutLoading || cart.length === 0 || !selectedAddressId || !isStoreOpen}
+                    className={`w-full font-extrabold py-3.5 px-4 rounded-button transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed hidden md:flex ${
+                      !isStoreOpen
+                        ? "bg-slate-300 text-slate-500 shadow-none"
+                        : "bg-primary hover:bg-primary-dark text-white shadow-premium disabled:bg-slate-200 disabled:text-slate-400"
+                    }`}
                   >
                     {checkoutLoading ? (
                       <>
                         <Loader2 className="h-4.5 w-4.5 animate-spin" /> Placing Order...
                       </>
+                    ) : !isStoreOpen ? (
+                      <span>Store is Closed — Cannot Place Order</span>
                     ) : (
                       <>
                         Place Order ({paymentMethod === "cod" ? "COD" : "Online"}) <ArrowRight className="h-4.5 w-4.5" />
@@ -785,13 +838,19 @@ function CartContent() {
             {/* Place Order Trigger */}
             <button
               onClick={handlePlaceOrderClick}
-              disabled={checkoutLoading || cart.length === 0 || !selectedAddressId}
-              className="flex-1 bg-primary hover:bg-primary-dark text-white font-extrabold py-3.5 px-4 rounded-2xl shadow-premium transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-xs active:scale-[0.98]"
+              disabled={checkoutLoading || cart.length === 0 || !selectedAddressId || !isStoreOpen}
+              className={`flex-1 font-extrabold py-3.5 px-4 rounded-2xl transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed text-xs active:scale-[0.98] ${
+                !isStoreOpen
+                  ? "bg-slate-300 text-slate-500 shadow-none"
+                  : "bg-primary hover:bg-primary-dark text-white shadow-premium disabled:bg-slate-200 disabled:text-slate-400"
+              }`}
             >
               {checkoutLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" /> Placing Order...
                 </>
+              ) : !isStoreOpen ? (
+                <span>Store Closed (Orders Paused)</span>
               ) : (
                 <>
                   <span>Place Order • ₹{grandTotal}</span>
@@ -1240,16 +1299,23 @@ function CartContent() {
                 <button
                   type="button"
                   onClick={async () => {
+                    if (!isStoreOpen) return;
                     setShowPaymentDrawer(false);
                     await handlePlaceOrder();
                   }}
-                  disabled={checkoutLoading}
-                  className="w-full bg-primary hover:bg-primary-dark text-white font-extrabold py-3.5 px-4 rounded-2xl shadow-premium transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-xs active:scale-[0.98] mt-2.5"
+                  disabled={checkoutLoading || !isStoreOpen}
+                  className={`w-full font-extrabold py-3.5 px-4 rounded-2xl transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed text-xs active:scale-[0.98] mt-2.5 ${
+                    !isStoreOpen
+                      ? "bg-slate-300 text-slate-500 shadow-none"
+                      : "bg-primary hover:bg-primary-dark text-white shadow-premium disabled:bg-slate-200 disabled:text-slate-400"
+                  }`}
                 >
                   {checkoutLoading ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" /> Placing Order...
                     </>
+                  ) : !isStoreOpen ? (
+                    <span>Store is Closed — Cannot Place Order</span>
                   ) : (
                     <>
                       <span>Confirm & Place Order • ₹{grandTotal}</span>

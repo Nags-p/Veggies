@@ -4,7 +4,7 @@ import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { LayoutDashboard, ShoppingBasket, ShoppingCart, Tag, TrendingUp, AlertTriangle, Search, Plus, Edit, Trash2, Check, RefreshCw, Loader2, User, Bell, Settings, Eye, EyeOff, Users, Store } from "lucide-react";
+import { LayoutDashboard, ShoppingBasket, ShoppingCart, Tag, TrendingUp, AlertTriangle, Search, Plus, Edit, Trash2, Check, CheckCircle2, RefreshCw, Loader2, User, Bell, Settings, Eye, EyeOff, Users, Store } from "lucide-react";
 import Header from "@/components/Header";
 import { createClient } from "@/lib/supabase/client";
 import NotificationManager from "@/components/NotificationManager";
@@ -42,6 +42,7 @@ interface AdminOrder {
   address: string;
   lat?: number | null;
   lon?: number | null;
+  store_name?: string;
   total: number;
   status: string;
   date: string;
@@ -85,22 +86,9 @@ function AdminPanelContent() {
     }
   }, [searchParams]);
 
-  const [incomingOrdersQueue, setIncomingOrdersQueue] = useState<any[]>([]);
-  const [showFullScreenNotification, setShowFullScreenNotification] = useState(false);
-  const incomingOrder = incomingOrdersQueue[0];
-
-  // Stop continuous vibration when the incoming orders queue becomes empty
-  useEffect(() => {
-    if (!loadingData && incomingOrdersQueue.length === 0 && typeof window !== "undefined" && (window as any).Capacitor) {
-      import("@capacitor/core").then(({ registerPlugin }) => {
-        const BackgroundActivity = registerPlugin("BackgroundActivity");
-        (BackgroundActivity as any).stopVibration().catch((err: any) => console.error(err));
-      });
-    }
-  }, [incomingOrdersQueue, loadingData]);
-  
-  // Order management states
-  const [ordersTab, setOrdersTab] = useState<"active" | "completed">("active");
+  // Order management states (Completed orders only, filtered store-wise)
+  const [selectedStoreFilter, setSelectedStoreFilter] = useState<string>("all");
+  const [storesList, setStoresList] = useState<any[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
   const [refreshingOrders, setRefreshingOrders] = useState(false);
 
@@ -298,32 +286,50 @@ function AdminPanelContent() {
     checkAdmin();
   }, [router, supabase.auth]);
 
-  // Request system notification permission on mount for Admin App
-  useEffect(() => {
-    if (typeof window !== "undefined" && "Notification" in window) {
-      if (Notification.permission === "default") {
-        Notification.requestPermission().catch(err => console.error("Permission request failed:", err));
-      }
-    }
+  // Distance helper to resolve nearest store
+  const getDistanceInKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
 
-    // Request Capacitor Local Notification permission on Android/iOS
-    async function requestCapacitorPermission() {
-      if (typeof window !== "undefined" && (window as any).Capacitor) {
-        try {
-          const { LocalNotifications } = await import("@capacitor/local-notifications");
-          const status = await LocalNotifications.checkPermissions();
-          if (status.display !== "granted") {
-            await LocalNotifications.requestPermissions();
-          }
-        } catch (e) {
-          console.error("Failed to request Capacitor notification permissions:", e);
+  const resolveStoreName = (o: any, availableStores: any[]) => {
+    if (o.packer_name && o.packer_name.includes("(") && o.packer_name.includes(")")) {
+      const match = o.packer_name.match(/\(([^)]+)\)/);
+      if (match && match[1]) return match[1];
+    }
+    if (o.packer_name && o.packer_name.toLowerCase().includes("store")) {
+      return o.packer_name;
+    }
+    if (o.addresses?.latitude && o.addresses?.longitude && availableStores.length > 0) {
+      let nearest = availableStores[0];
+      let minDist = 999999;
+      availableStores.forEach((st: any) => {
+        const dist = getDistanceInKm(
+          parseFloat(st.lat),
+          parseFloat(st.lon),
+          parseFloat(o.addresses.latitude),
+          parseFloat(o.addresses.longitude)
+        );
+        if (dist < minDist) {
+          minDist = dist;
+          nearest = st;
         }
-      }
+      });
+      if (nearest?.name) return nearest.name;
     }
-    requestCapacitorPermission();
-  }, []);
+    return availableStores[0]?.name || "Main Store";
+  };
 
-  // Silent background fetch for auto-refreshing orders every second
+  // Silent background fetch for refreshing orders
   useEffect(() => {
     if (authLoading) return;
     
@@ -344,6 +350,7 @@ function AdminPanelContent() {
             address: o.addresses ? `${o.addresses.building_name}, ${o.addresses.complete_address}` : "Saved Address",
             lat: o.addresses?.latitude || null,
             lon: o.addresses?.longitude || null,
+            store_name: resolveStoreName(o, storesList),
             total: parseFloat(o.net_amount),
             status: o.status,
             payment_method: o.payment_method || "COD",
@@ -363,7 +370,6 @@ function AdminPanelContent() {
           }));
 
           setOrders(mappedOrders);
-          syncIncomingOrdersQueue(mappedOrders);
           
           // Sync selectedOrder if open
           setSelectedOrder((curr) => {
@@ -375,57 +381,27 @@ function AdminPanelContent() {
       } catch (err) {
         console.error("Silent background fetch failed:", err);
       }
-    }, 1000);
+    }, 5000);
 
     return () => clearInterval(interval);
-  }, [authLoading, supabase]);
+  }, [authLoading, supabase, storesList]);
 
-  // Real-time listener for incoming orders
+  // Real-time listener for database orders update (silent refresh without notifications)
   useEffect(() => {
     if (authLoading) return;
 
     const channel = supabase
-      .channel(`new-orders-realtime-${Date.now()}`)
+      .channel(`admin-orders-live-sync-${Date.now()}`)
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*",
           schema: "public",
           table: "orders"
         },
-        async (payload) => {
-          // Fetch complete profile and address for detail presentation
-          const { data: orderWithDetails } = await supabase
-            .from("orders")
-            .select("*, order_items(*, products(weight)), profiles(full_name, phone), addresses(*)")
-            .eq("id", payload.new.id)
-            .single();
-
-          if (orderWithDetails) {
-            const mapped = {
-              id: orderWithDetails.id.slice(0, 8).toUpperCase(),
-              db_id: orderWithDetails.id,
-              customer: orderWithDetails.profiles?.full_name || orderWithDetails.profiles?.phone || "Anonymous User",
-              phone: orderWithDetails.profiles?.phone || "",
-              total: parseFloat(orderWithDetails.net_amount),
-              address: orderWithDetails.addresses ? `${orderWithDetails.addresses.building_name}, ${orderWithDetails.addresses.complete_address}` : "Saved Delivery Location",
-              notes: orderWithDetails.delivery_notes || "No notes",
-              order_items: orderWithDetails.order_items || [],
-              discount_amount: parseFloat(orderWithDetails.discount_amount) || 0,
-              delivery_fee: parseFloat(orderWithDetails.delivery_fee) || 0,
-              total_amount: parseFloat(orderWithDetails.total_amount) || 0,
-              coupon_code: orderWithDetails.coupon_code
-            };
-
-            setIncomingOrdersQueue((prev) => {
-              if (prev.some((o) => o.db_id === mapped.db_id)) return prev;
-              return [...prev, mapped];
-            });
-            setShowFullScreenNotification(true);
-
-            // Instantly refresh orders table
-            loadDbData();
-          }
+        () => {
+          // Instantly refresh orders table quietly
+          loadDbData();
         }
       )
       .subscribe();
@@ -434,42 +410,6 @@ function AdminPanelContent() {
       supabase.removeChannel(channel);
     };
   }, [authLoading, supabase]);
-
-  // Helper to sync incoming orders queue with pending database orders
-  const syncIncomingOrdersQueue = (mappedOrders: any[]) => {
-    const pendingMapped = mappedOrders.filter(
-      (o) => o.status === "placed" || o.status === "pending"
-    ).map((o) => ({
-      id: o.id,
-      db_id: o.db_id,
-      customer: o.customer,
-      phone: o.phone,
-      total: o.total,
-      address: o.address,
-      notes: o.delivery_notes || "No notes",
-      order_items: o.order_items || [],
-      status: o.status
-    }));
-
-    if (pendingMapped.length > 0) {
-      setIncomingOrdersQueue((prev) => {
-        const nextQueue = [...prev];
-        const filteredQueue = nextQueue.filter((qOrder) =>
-          pendingMapped.some((p) => p.db_id === qOrder.db_id)
-        );
-        pendingMapped.forEach((mapped) => {
-          if (!filteredQueue.some((o) => o.db_id === mapped.db_id)) {
-            filteredQueue.push(mapped);
-          }
-        });
-        return filteredQueue;
-      });
-      setShowFullScreenNotification(true);
-    } else {
-      setIncomingOrdersQueue([]);
-      setShowFullScreenNotification(false);
-    }
-  };
 
   // Load live Supabase database content
   const loadDbData = async () => {
@@ -514,7 +454,15 @@ function AdminPanelContent() {
         })));
       }
 
-      // 2. Fetch Orders, join profiles & addresses
+      // 2. Fetch Stores
+      const { data: dbStores } = await supabase
+        .from("stores")
+        .select("*")
+        .order("name");
+      const activeStores = dbStores && dbStores.length > 0 ? dbStores : [];
+      setStoresList(activeStores);
+
+      // 3. Fetch Orders, join profiles & addresses
       const { data: dbOrders } = await supabase
         .from("orders")
         .select("*, order_items(*, products(weight)), profiles(full_name, phone), addresses(*)")
@@ -530,6 +478,7 @@ function AdminPanelContent() {
           address: o.addresses ? `${o.addresses.building_name}, ${o.addresses.complete_address}` : "Saved Address",
           lat: o.addresses?.latitude || null,
           lon: o.addresses?.longitude || null,
+          store_name: resolveStoreName(o, activeStores),
           total: parseFloat(o.net_amount),
           status: o.status,
           payment_method: o.payment_method || "COD",
@@ -549,7 +498,6 @@ function AdminPanelContent() {
         }));
 
         setOrders(mappedOrders);
-        syncIncomingOrdersQueue(mappedOrders);
 
         // Sync selectedOrder if open
         setSelectedOrder((curr) => {
@@ -1603,213 +1551,281 @@ function AdminPanelContent() {
                   transition={{ duration: 0.2 }}
                   className="space-y-4 font-sans"
                 >
-                  {/* Category Filter Tabs & Search Bar */}
-                  <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center bg-white p-4 rounded-xl shadow-card border border-slate-100/80 font-sans">
-                    {/* Sub-tabs switcher */}
-                    <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
-                      <button
-                        onClick={() => setOrdersTab("active")}
-                        className={`px-4 py-2 rounded-lg text-xs font-black tracking-wider transition-all cursor-pointer ${
-                          ordersTab === "active"
-                            ? "bg-white text-primary shadow-sm"
-                            : "text-slate-500 hover:text-slate-800"
-                        }`}
-                      >
-                        Active Orders ({orders.filter(o => ["pending", "confirmed", "preparing", "out_for_delivery"].includes(o.status)).length})
-                      </button>
-                      <button
-                        onClick={() => setOrdersTab("completed")}
-                        className={`px-4 py-2 rounded-lg text-xs font-black tracking-wider transition-all cursor-pointer ${
-                          ordersTab === "completed"
-                            ? "bg-white text-slate-800 shadow-sm"
-                            : "text-slate-500 hover:text-slate-800"
-                        }`}
-                      >
-                        Completed ({orders.filter(o => ["delivered", "cancelled"].includes(o.status)).length})
-                      </button>
-                    </div>
+                  {/* Store-Wise Filter Tabs & Search Bar */}
+                  {(() => {
+                    const availableStoreNames = Array.from(
+                      new Set([
+                        ...storesList.map((s: any) => s.name),
+                        ...orders
+                          .filter((o) => ["delivered", "cancelled"].includes(o.status))
+                          .map((o) => o.store_name || "Main Store"),
+                      ])
+                    ).filter(Boolean);
 
-                    <div className="flex items-center gap-2">
-                      {/* Search Bar */}
-                      <div className="relative max-w-xs w-full">
-                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                        <input
-                          type="text"
-                          placeholder="Search by customer / snippet..."
-                          value={orderSearch}
-                          onChange={(e) => setOrderSearch(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl py-1.5 pl-9 pr-3 text-xs focus:outline-none focus:bg-white"
-                        />
-                      </div>
-                      {/* Refresh Button */}
-                      <button
-                        onClick={async () => {
-                          setRefreshingOrders(true);
-                          await loadDbData();
-                          setRefreshingOrders(false);
-                        }}
-                        disabled={refreshingOrders}
-                        className="p-2 rounded-xl bg-slate-100 hover:bg-primary/10 text-slate-500 hover:text-primary transition-all cursor-pointer disabled:opacity-50"
-                        title="Refresh Orders"
-                      >
-                        <RefreshCw className={`h-4 w-4 ${refreshingOrders ? "animate-spin" : ""}`} />
-                      </button>
-                    </div>
-                  </div>
+                    const completedOrders = orders.filter((o) => {
+                      const isCompleted = ["delivered", "cancelled"].includes(o.status);
+                      if (!isCompleted) return false;
 
-                  {/* Orders table with details action (Desktop only) */}
-                  <div className="hidden md:block bg-white rounded-xl shadow-card border border-slate-100/80 overflow-hidden">
-                    <div className="overflow-x-auto w-full">
-                      <table className="w-full text-left border-collapse min-w-[700px]">
-                        <thead>
-                          <tr className="bg-slate-50 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                            <th className="p-4">Order ID</th>
-                            <th className="p-4">Customer</th>
-                            <th className="p-4">Date</th>
-                            <th className="p-4">Total</th>
-                            <th className="p-4">Status</th>
-                            <th className="p-4 text-right">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
-                          {orders
-                            .filter(
-                              (o) =>
-                                (o.customer.toLowerCase().includes(orderSearch.toLowerCase()) ||
-                                 o.id.toLowerCase().includes(orderSearch.toLowerCase())) &&
-                                (ordersTab === "active"
-                                  ? ["pending", "confirmed", "preparing", "out_for_delivery"].includes(o.status)
-                                  : ["delivered", "cancelled"].includes(o.status))
-                            )
-                            .map((o) => (
-                              <tr
-                                key={o.id}
-                                onClick={() => setSelectedOrder(o)}
-                                className="hover:bg-slate-50/50 cursor-pointer transition-colors"
-                              >
-                                <td className="p-4 font-extrabold text-slate-900">
-                                  #{o.id}
-                                  <span className="text-[9px] text-slate-400 font-bold block pt-0.5">
-                                    {o.payment_method?.toUpperCase()}
-                                  </span>
-                                </td>
-                                <td className="p-4">
-                                  <span className="font-bold block text-slate-800">{o.customer}</span>
-                                  <span className="text-[10px] text-slate-400 font-medium truncate max-w-xs block">{o.address}</span>
-                                  {renderDispatchDetails(o)}
-                                </td>
-                                <td className="p-4 text-slate-500 font-medium">{o.date}</td>
-                                <td className="p-4 text-slate-900 font-extrabold">₹{o.total.toFixed(2)}</td>
-                                <td className="p-4">
-                                  <span className={`inline-block text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wider ${
-                                    o.status === "delivered" ? "bg-green-50 text-green-600 border border-green-100" :
-                                    o.status === "cancelled" ? "bg-red-50 text-red-600 border border-red-100" :
-                                    o.status === "pending" ? "bg-orange-50 text-orange-600 border border-orange-100" :
-                                    "bg-blue-50 text-blue-600 border border-blue-100"
-                                  }`}>
-                                    {o.status}
-                                  </span>
-                                </td>
-                                <td className="p-4 text-right">
-                                  <div className="flex gap-2 justify-end">
-                                    {getNextStatusAction(o)}
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    {orders.filter(
-                      (o) =>
-                        (o.customer.toLowerCase().includes(orderSearch.toLowerCase()) ||
-                         o.id.toLowerCase().includes(orderSearch.toLowerCase())) &&
-                        (ordersTab === "active"
-                          ? ["pending", "confirmed", "preparing", "out_for_delivery"].includes(o.status)
-                          : ["delivered", "cancelled"].includes(o.status))
-                    ).length === 0 && (
-                      <div className="flex flex-col items-center justify-center py-16 text-center">
-                        <ShoppingCart className="h-12 w-12 text-slate-200 mb-4" />
-                        <h3 className="text-sm font-extrabold text-slate-400">No orders right now</h3>
-                        <p className="text-xs text-slate-300 mt-1">New orders will appear here automatically</p>
-                      </div>
-                    )}
-                  </div>
+                      const query = orderSearch.toLowerCase().trim();
+                      const matchesSearch =
+                        !query ||
+                        o.customer.toLowerCase().includes(query) ||
+                        o.id.toLowerCase().includes(query) ||
+                        (o.store_name && o.store_name.toLowerCase().includes(query)) ||
+                        (o.address && o.address.toLowerCase().includes(query));
 
-                  {/* Orders Mobile Card View (Mobile only) */}
-                  <div className="grid grid-cols-1 gap-4 md:hidden">
-                    {orders
-                      .filter(
-                        (o) =>
-                          (o.customer.toLowerCase().includes(orderSearch.toLowerCase()) ||
-                           o.id.toLowerCase().includes(orderSearch.toLowerCase())) &&
-                          (ordersTab === "active"
-                            ? ["pending", "confirmed", "preparing", "out_for_delivery"].includes(o.status)
-                            : ["delivered", "cancelled"].includes(o.status))
-                      )
-                      .map((o) => (
-                        <div
-                          key={o.id}
-                          onClick={() => setSelectedOrder(o)}
-                          className="bg-white p-4 rounded-xl shadow-card border border-slate-100/80 space-y-3.5 cursor-pointer active:bg-slate-50/50 transition-all"
-                        >
-                          <div className="flex justify-between items-center border-b border-slate-50 pb-2">
-                            <div>
-                              <span className="font-extrabold text-slate-900 text-sm">#{o.id}</span>
-                              <p className="text-[10px] text-slate-400 font-bold">{o.date} | {o.payment_method?.toUpperCase()}</p>
+                      const matchesStore =
+                        selectedStoreFilter === "all" ||
+                        o.store_name === selectedStoreFilter ||
+                        (!o.store_name && selectedStoreFilter === "Main Store");
+
+                      return matchesSearch && matchesStore;
+                    });
+
+                    return (
+                      <>
+                        {/* Header & Controls */}
+                        <div className="flex flex-col gap-3 bg-white p-4 rounded-xl shadow-card border border-slate-100/80 font-sans">
+                          <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
+                            <div className="flex items-center gap-2.5">
+                              <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100">
+                                <CheckCircle2 className="h-5 w-5" />
+                              </div>
+                              <div>
+                                <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">Completed Orders</h2>
+                                <p className="text-[11px] font-bold text-slate-400 mt-0.5">
+                                  Store-wise record of delivered and cancelled customer orders ({orders.filter(o => ["delivered", "cancelled"].includes(o.status)).length} total)
+                                </p>
+                              </div>
                             </div>
-                            <div className="text-right">
-                              <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider">Net Amount</span>
-                              <span className="text-xs font-black text-primary">₹{o.total.toFixed(2)}</span>
+
+                            <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                              {/* Search Bar */}
+                              <div className="relative max-w-xs w-full">
+                                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                                <input
+                                  type="text"
+                                  placeholder="Search customer, ID, or store..."
+                                  value={orderSearch}
+                                  onChange={(e) => setOrderSearch(e.target.value)}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-1.5 pl-9 pr-3 text-xs focus:outline-none focus:bg-white"
+                                />
+                              </div>
+                              {/* Refresh Button */}
+                              <button
+                                onClick={async () => {
+                                  setRefreshingOrders(true);
+                                  await loadDbData();
+                                  setRefreshingOrders(false);
+                                }}
+                                disabled={refreshingOrders}
+                                className="p-2 rounded-xl bg-slate-100 hover:bg-primary/10 text-slate-500 hover:text-primary transition-all cursor-pointer disabled:opacity-50 flex-shrink-0"
+                                title="Refresh Orders"
+                              >
+                                <RefreshCw className={`h-4 w-4 ${refreshingOrders ? "animate-spin" : ""}`} />
+                              </button>
                             </div>
                           </div>
 
-                          <div className="space-y-1 text-xs">
-                            <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider">Customer Details</span>
-                            {o.status !== "preparing" && o.status !== "out_for_delivery" ? (
-                              <>
-                                <span className="font-extrabold text-slate-800">{o.customer}</span>
+                          {/* Store Pills Switcher */}
+                          <div className="flex items-center gap-1.5 overflow-x-auto pt-2 border-t border-slate-100 scrollbar-none">
+                            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mr-1 flex items-center gap-1 flex-shrink-0">
+                              <Store className="h-3.5 w-3.5 text-slate-400" />
+                              Stores:
+                            </span>
+
+                            <button
+                              onClick={() => setSelectedStoreFilter("all")}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 flex-shrink-0 ${
+                                selectedStoreFilter === "all"
+                                  ? "bg-slate-900 text-white shadow-sm"
+                                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                              }`}
+                            >
+                              <span>All Stores</span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${selectedStoreFilter === "all" ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"}`}>
+                                {orders.filter(o => ["delivered", "cancelled"].includes(o.status)).length}
+                              </span>
+                            </button>
+
+                            {availableStoreNames.map((storeName) => {
+                              const count = orders.filter(
+                                (o) =>
+                                  ["delivered", "cancelled"].includes(o.status) &&
+                                  (o.store_name === storeName || (!o.store_name && storeName === "Main Store"))
+                              ).length;
+
+                              return (
+                                <button
+                                  key={storeName}
+                                  onClick={() => setSelectedStoreFilter(storeName)}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 flex-shrink-0 ${
+                                    selectedStoreFilter === storeName
+                                      ? "bg-primary text-white shadow-sm"
+                                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                                  }`}
+                                >
+                                  <span>{storeName}</span>
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${selectedStoreFilter === storeName ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"}`}>
+                                    {count}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Completed Orders table (Desktop only) */}
+                        <div className="hidden md:block bg-white rounded-xl shadow-card border border-slate-100/80 overflow-hidden">
+                          <div className="overflow-x-auto w-full">
+                            <table className="w-full text-left border-collapse min-w-[750px]">
+                              <thead>
+                                <tr className="bg-slate-50 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                                  <th className="p-4">Order ID</th>
+                                  <th className="p-4">Store Branch</th>
+                                  <th className="p-4">Customer</th>
+                                  <th className="p-4">Date</th>
+                                  <th className="p-4">Total</th>
+                                  <th className="p-4">Status</th>
+                                  <th className="p-4 text-right">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
+                                {completedOrders.map((o) => (
+                                  <tr
+                                    key={o.id}
+                                    onClick={() => setSelectedOrder(o)}
+                                    className="hover:bg-slate-50/50 cursor-pointer transition-colors"
+                                  >
+                                    <td className="p-4 font-extrabold text-slate-900">
+                                      #{o.id}
+                                      <span className="text-[9px] text-slate-400 font-bold block pt-0.5">
+                                        {o.payment_method?.toUpperCase()}
+                                      </span>
+                                    </td>
+                                    <td className="p-4">
+                                      <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-100/80">
+                                        <Store className="h-3 w-3 text-emerald-600" />
+                                        {o.store_name || "Main Store"}
+                                      </span>
+                                    </td>
+                                    <td className="p-4">
+                                      <span className="font-bold block text-slate-800">{o.customer}</span>
+                                      <span className="text-[10px] text-slate-400 font-medium truncate max-w-xs block">{o.address}</span>
+                                    </td>
+                                    <td className="p-4 text-slate-500 font-medium">{o.date}</td>
+                                    <td className="p-4 text-slate-900 font-extrabold">₹{o.total.toFixed(2)}</td>
+                                    <td className="p-4">
+                                      <span className={`inline-block text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wider ${
+                                        o.status === "delivered" ? "bg-green-50 text-green-600 border border-green-100" :
+                                        "bg-red-50 text-red-600 border border-red-100"
+                                      }`}>
+                                        {o.status}
+                                      </span>
+                                      {o.status === "cancelled" && o.cancel_reason && (
+                                        <span className="block text-[9px] text-red-500 font-medium truncate max-w-[140px] mt-0.5">
+                                          {o.cancel_reason}
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="p-4 text-right">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedOrder(o);
+                                        }}
+                                        className="px-3 py-1.5 bg-slate-100 hover:bg-primary/10 text-slate-700 hover:text-primary rounded-lg text-xs font-bold transition-all inline-flex items-center gap-1 cursor-pointer"
+                                      >
+                                        <Eye className="h-3.5 w-3.5" />
+                                        <span>View Details</span>
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          {completedOrders.length === 0 && (
+                            <div className="flex flex-col items-center justify-center py-16 text-center">
+                              <CheckCircle2 className="h-12 w-12 text-slate-200 mb-4" />
+                              <h3 className="text-sm font-extrabold text-slate-400">No completed orders found</h3>
+                              <p className="text-xs text-slate-300 mt-1">
+                                {selectedStoreFilter !== "all"
+                                  ? `No delivered or cancelled orders recorded for "${selectedStoreFilter}"`
+                                  : "Completed customer orders will appear here automatically"}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Completed Orders Mobile Card View (Mobile only) */}
+                        <div className="grid grid-cols-1 gap-4 md:hidden">
+                          {completedOrders.map((o) => (
+                            <div
+                              key={o.id}
+                              onClick={() => setSelectedOrder(o)}
+                              className="bg-white p-4 rounded-xl shadow-card border border-slate-100/80 space-y-3 cursor-pointer active:bg-slate-50/50 transition-all"
+                            >
+                              <div className="flex justify-between items-center border-b border-slate-50 pb-2">
+                                <div>
+                                  <span className="font-extrabold text-slate-900 text-sm">#{o.id}</span>
+                                  <p className="text-[10px] text-slate-400 font-bold">{o.date} | {o.payment_method?.toUpperCase()}</p>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider">Total</span>
+                                  <span className="text-xs font-black text-primary">₹{o.total.toFixed(2)}</span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between">
+                                <span className="inline-flex items-center gap-1 text-[11px] font-extrabold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                  <Store className="h-3 w-3 text-emerald-600" />
+                                  {o.store_name || "Main Store"}
+                                </span>
+                                <span className={`inline-block text-[9px] font-extrabold px-2 py-0.5 rounded uppercase tracking-wider ${
+                                  o.status === "delivered" ? "bg-green-50 text-green-600 border border-green-100" :
+                                  "bg-red-50 text-red-600 border border-red-100"
+                                }`}>
+                                  {o.status}
+                                </span>
+                              </div>
+
+                              <div className="space-y-1 text-xs">
+                                <span className="font-bold text-slate-800 block">{o.customer}</span>
                                 <p className="text-[10px] text-slate-500 font-medium leading-normal">
                                   {o.address}
                                 </p>
-                              </>
-                            ) : (
-                              renderDispatchDetails(o)
-                            )}
-                          </div>
+                              </div>
 
-                          <div className="flex items-center justify-between pt-2.5 border-t border-slate-50">
-                            <div>
-                              <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider">Status</span>
-                              <span className={`inline-block text-[9px] font-extrabold px-2 py-0.5 rounded uppercase tracking-wider mt-0.5 ${
-                                o.status === "delivered" ? "bg-green-50 text-green-600 border border-green-100" :
-                                o.status === "cancelled" ? "bg-red-50 text-red-600 border border-red-100" :
-                                "bg-blue-50 text-blue-600 border border-blue-100"
-                              }`}>
-                                {o.status}
-                              </span>
+                              <div className="flex items-center justify-end pt-2 border-t border-slate-50">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedOrder(o);
+                                  }}
+                                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Eye className="h-3.5 w-3.5 text-slate-500" />
+                                  <span>View Details</span>
+                                </button>
+                              </div>
                             </div>
-                            <div className="pt-0.5">
-                              {getNextStatusAction(o)}
+                          ))}
+                          {completedOrders.length === 0 && (
+                            <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-xl border border-slate-100">
+                              <CheckCircle2 className="h-12 w-12 text-slate-200 mb-4" />
+                              <h3 className="text-sm font-extrabold text-slate-400">No completed orders found</h3>
+                              <p className="text-xs text-slate-300 mt-1">
+                                {selectedStoreFilter !== "all"
+                                  ? `No orders for "${selectedStoreFilter}"`
+                                  : "Completed orders will appear here automatically"}
+                              </p>
                             </div>
-                          </div>
+                          )}
                         </div>
-                      ))}
-                    {orders.filter(
-                      (o) =>
-                        (o.customer.toLowerCase().includes(orderSearch.toLowerCase()) ||
-                         o.id.toLowerCase().includes(orderSearch.toLowerCase())) &&
-                        (ordersTab === "active"
-                          ? ["pending", "confirmed", "preparing", "out_for_delivery"].includes(o.status)
-                          : ["delivered", "cancelled"].includes(o.status))
-                    ).length === 0 && (
-                      <div className="flex flex-col items-center justify-center py-16 text-center">
-                        <ShoppingCart className="h-12 w-12 text-slate-200 mb-4" />
-                        <h3 className="text-sm font-extrabold text-slate-400">No orders right now</h3>
-                        <p className="text-xs text-slate-300 mt-1">New orders will appear here automatically</p>
-                      </div>
-                    )}
-                  </div>
+                      </>
+                    );
+                  })()}
                 </motion.div>
               )}
 
@@ -2667,18 +2683,25 @@ function AdminPanelContent() {
 
               {/* Modal Body */}
               <div className="p-5 flex-1 overflow-y-auto space-y-5 text-xs">
-                {/* Status Tracker & Date */}
-                <div className="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100">
+                {/* Status Tracker, Date & Store Branch */}
+                <div className="grid grid-cols-3 gap-2 bg-slate-50 p-3.5 rounded-xl border border-slate-100">
                   <div>
                     <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Ordered On</span>
                     <span className="font-bold text-slate-700 mt-1 block">{selectedOrder.date}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Store Branch</span>
+                    <span className="inline-flex items-center gap-1 font-bold text-slate-800 mt-1">
+                      <Store className="h-3 w-3 text-emerald-600" />
+                      {selectedOrder.store_name || "Main Store"}
+                    </span>
                   </div>
                   <div className="text-right">
                     <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Status</span>
                     <span className={`inline-block text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase mt-1 ${
                       selectedOrder.status === "delivered" ? "bg-green-50 text-green-600 border border-green-100" :
                       selectedOrder.status === "cancelled" ? "bg-red-50 text-red-600 border border-red-100" :
-                      "bg-blue-50 text-blue-600 border border-blue-100 animate-pulse"
+                      "bg-blue-50 text-blue-600 border border-blue-100"
                     }`}>
                       {selectedOrder.status}
                     </span>
@@ -2801,157 +2824,17 @@ function AdminPanelContent() {
               </div>
 
               {/* Modal Footer (Action Panel) */}
-              <div className="p-4 bg-slate-50 border-t border-slate-100 flex flex-col gap-3">
-                <div className="flex justify-between items-center gap-4">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">Actions</span>
-                  <div className="flex gap-2 flex-1 justify-end">
-                    {selectedOrder.status !== "cancelled" && selectedOrder.status !== "delivered" && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setCancelPrompt({ orderId: selectedOrder.db_id });
-                        }}
-                        className="bg-red-50 hover:bg-red-100 text-red-600 font-extrabold text-[10px] px-3 py-2 rounded-xl transition-all cursor-pointer"
-                      >
-                        Cancel Order
-                      </button>
-                    )}
-                    {getNextStatusAction(selectedOrder)}
-                  </div>
+              <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-1.5 text-xs text-slate-600 font-semibold">
+                  <Store className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                  <span>Branch: <strong className="text-slate-800">{selectedOrder.store_name || "Main Store"}</strong></span>
                 </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Full-Screen Realtime Order Alert Overlay */}
-      <AnimatePresence>
-        {showFullScreenNotification && incomingOrder && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              className="bg-white rounded-2xl max-w-md w-full shadow-premium border border-slate-100 p-8 text-center space-y-6"
-            >
-              <div className="mx-auto bg-amber-50 text-amber-500 w-16 h-16 rounded-full flex items-center justify-center animate-bounce">
-                <Bell className="h-8 w-8 text-amber-600 animate-pulse" />
-              </div>
-
-              <div className="space-y-1.5">
-                <span className="text-[10px] font-extrabold text-primary uppercase tracking-widest bg-primary/10 px-3 py-1 rounded-full">
-                  New Order Received!
-                </span>
-                <h2 className="text-2xl font-black text-slate-950 pt-2">
-                  Order #{incomingOrder.id}
-                </h2>
-                <p className="text-xs text-slate-500 font-bold">
-                  Amount Payable: <span className="text-primary font-black">₹{incomingOrder.total}</span>
-                </p>
-              </div>
-
-              <div className="bg-slate-50 border border-slate-100 p-4 rounded-xl text-left space-y-2.5 text-xs font-semibold text-slate-700 max-h-[35vh] overflow-y-auto">
-                <div>
-                  <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Customer</span>
-                  <span className="text-slate-800 font-bold">{incomingOrder.customer}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Delivery Address</span>
-                  <span className="text-slate-600 font-medium leading-normal block pt-0.5">{incomingOrder.address}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Time Slot / Notes</span>
-                  <span className="text-slate-600 font-medium block pt-0.5">{incomingOrder.notes}</span>
-                </div>
-
-                {/* Items Ordered section inside the fullscreen modal */}
-                <div className="pt-2 border-t border-slate-200/60 space-y-1.5">
-                  <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Items Ordered</span>
-                  <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 bg-white">
-                    {incomingOrder.order_items && incomingOrder.order_items.length > 0 ? (
-                      incomingOrder.order_items.map((item: any, idx: number) => (
-                        <div key={idx} className="p-2.5 flex justify-between items-center gap-2.5">
-                          <div className="min-w-0 flex-1">
-                            <p className={`font-extrabold text-[11px] truncate ${item.is_cancelled ? "line-through text-slate-400" : "text-slate-800"}`}>
-                              {item.name}
-                            </p>
-                            <p className="text-[10px] font-bold text-slate-400 mt-0.5">
-                              {item.quantity} x ₹{parseFloat(item.price).toFixed(2)}
-                              {item.products?.weight ? ` (${item.products.weight})` : ""}
-                              {item.is_cancelled && (
-                                <span className="text-red-500 font-black ml-1.5">
-                                  [Cancelled: {item.cancel_reason || "Out of Stock"}]
-                                </span>
-                              )}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            {!item.is_cancelled && incomingOrder.status !== "cancelled" && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setCancelPrompt({
-                                    orderId: incomingOrder.db_id,
-                                    itemId: item.id
-                                  });
-                                }}
-                                className="bg-red-50 hover:bg-red-100 text-red-600 font-bold text-[9px] px-2 py-1 rounded transition-all cursor-pointer"
-                              >
-                                Cancel Item
-                              </button>
-                            )}
-                            <span className={`font-black text-[11px] ${item.is_cancelled ? "line-through text-slate-350" : "text-slate-900"}`}>
-                              ₹{(item.quantity * parseFloat(item.price)).toFixed(2)}
-                            </span>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="p-2.5 text-slate-400 text-xs italic">No items listed</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2 pt-2">
                 <button
-                  onClick={() => {
-                    handleUpdateOrderStatus(incomingOrder.db_id, "confirmed");
-                    setIncomingOrdersQueue((prev) => {
-                      const nextQueue = prev.filter((o) => o.db_id !== incomingOrder.db_id);
-                      if (nextQueue.length === 0) {
-                        setShowFullScreenNotification(false);
-                      }
-                      return nextQueue;
-                    });
-                  }}
-                  className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-sm py-3.5 rounded-button shadow-premium cursor-pointer transition-colors duration-150"
+                  onClick={() => setSelectedOrder(null)}
+                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-xl transition-all cursor-pointer"
                 >
-                  Accept & Manage Order
+                  Close Receipt
                 </button>
-                {incomingOrder.status !== "cancelled" && (
-                  <button
-                    onClick={() => {
-                      setCancelPrompt({
-                        orderId: incomingOrder.db_id
-                      });
-                    }}
-                    className="w-full bg-red-50 hover:bg-red-100 text-red-600 font-extrabold text-xs py-2.5 rounded-button cursor-pointer transition-colors"
-                  >
-                    Cancel Entire Order
-                  </button>
-                )}
-                {incomingOrder.status === "cancelled" && (
-                  <div className="text-red-650 bg-red-50 border border-red-100 p-2.5 rounded-xl text-[10px] font-extrabold">
-                    ✕ Order Cancelled: {incomingOrder.cancel_reason || "All items cancelled"}
-                  </div>
-                )}
               </div>
             </motion.div>
           </motion.div>

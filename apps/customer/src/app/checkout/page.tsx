@@ -24,7 +24,7 @@ export default function CheckoutPage() {
   const supabase = createClient();
   const { cart, subtotal, savings, deliveryFee, netAmount, clearCart } = useCart();
   const { location, storeLocation, stores, nearestStore, isServiceable, setShowLocationModal, getDistanceInKm } = useLocation();
-  const { isStoreOpen, storeTimings } = useStore();
+  const { isStoreOpen, storeTimings, storeStatus } = useStore();
 
   const [authLoading, setAuthLoading] = useState(true);
 
@@ -495,14 +495,20 @@ export default function CheckoutPage() {
 
               {/* Store Closed Warning */}
               {!isStoreOpen && (
-                <div className="bg-red-50 border border-red-100 rounded-xl p-3.5 flex gap-2.5 items-start text-xs text-red-700 font-bold mb-4 shadow-sm">
+                <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 flex gap-2.5 items-start text-xs text-red-700 font-bold mb-4 shadow-sm">
                   <ShieldAlert className="h-4.5 w-4.5 text-red-500 flex-shrink-0 mt-0.5 animate-pulse" />
                   <div>
                     <span className="block font-black text-sm text-red-800">Store is Currently Closed</span>
-                    <span className="block font-medium text-red-650 mt-1 leading-relaxed">
-                       Timings: {storeTimings?.open_time || "08:00"} - {storeTimings?.close_time || "22:00"} ({storeTimings?.days || "Mon - Sun"}).
+                    <span className="block font-medium text-red-700 mt-1 leading-relaxed">
+                      {storeStatus?.closed_reason
+                        ? storeStatus.closed_reason
+                        : `Hours: ${storeTimings?.open_time || "06:00"} - ${storeTimings?.close_time || "22:00"} (${storeTimings?.days || "Mon - Sun"}).`}
                     </span>
-                    <span className="block font-medium text-red-500 mt-1">Please place orders during open hours.</span>
+                    {storeStatus?.reopen_at && (
+                      <span className="block font-black text-red-600 mt-1">
+                        ⏱️ Reopening Notice: {storeStatus.reopen_at}
+                      </span>
+                    )}
                   </div>
                 </div>
               )}
@@ -511,10 +517,16 @@ export default function CheckoutPage() {
               <button
                 onClick={handlePlaceOrder}
                 disabled={loading || cart.length === 0 || !isStoreOpen}
-                className="w-full bg-primary hover:bg-primary-dark text-white font-extrabold py-4 px-4 rounded-button shadow-premium transition-all duration-150 flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`w-full font-extrabold py-4 px-4 rounded-button transition-all duration-150 flex items-center justify-center gap-1.5 disabled:cursor-not-allowed ${
+                  !isStoreOpen
+                    ? "bg-slate-300 text-slate-500 shadow-none"
+                    : "bg-primary hover:bg-primary-dark text-white shadow-premium disabled:opacity-50"
+                }`}
               >
                 {loading ? (
                   <Loader2 className="h-5 w-5 animate-spin text-white" />
+                ) : !isStoreOpen ? (
+                  <span>Store is Closed — Cannot Place Order</span>
                 ) : (
                   <>
                     Confirm & Place Order <ChevronRight className="h-4.5 w-4.5" />

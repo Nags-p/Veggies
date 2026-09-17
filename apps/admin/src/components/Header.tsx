@@ -1,68 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import Link from "next/link";
 import { MapPin, Settings } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 
 export default function Header() {
   const storeAddress = process.env.NEXT_PUBLIC_STORE_ADDRESS || "Malleshwaram, Bengaluru";
-  const supabase = createClient();
-  const [storeOpenStatus, setStoreOpenStatus] = useState<boolean>(true);
-  const [loading, setLoading] = useState<boolean>(true);
-
-  useEffect(() => {
-    async function loadStatus() {
-      try {
-        const { data, error } = await supabase
-          .from("store_settings")
-          .select("value")
-          .eq("key", "store_status")
-          .single();
-        if (data) {
-          setStoreOpenStatus(data.value.is_open);
-        }
-      } catch (err) {
-        console.error("Failed to load store status in header:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadStatus();
-
-    // Subscribe to realtime changes in store settings so it syncs across all pages instantly
-    const channel = supabase
-      .channel("store-status-header-sync")
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "store_settings", filter: "key=eq.store_status" },
-        (payload: any) => {
-          if (payload.new && payload.new.value) {
-            setStoreOpenStatus(payload.new.value.is_open);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [supabase]);
-
-  const handleToggle = async () => {
-    const nextStatus = !storeOpenStatus;
-    setStoreOpenStatus(nextStatus); // Optimistic UI
-    try {
-      const { error } = await supabase
-        .from("store_settings")
-        .update({ value: { is_open: nextStatus } })
-        .eq("key", "store_status");
-      if (error) throw error;
-    } catch (err) {
-      console.error("Failed to toggle store status:", err);
-      setStoreOpenStatus(!nextStatus); // Revert
-    }
-  };
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-slate-100 shadow-sm py-3 px-4 md:px-8">
@@ -98,29 +41,6 @@ export default function Header() {
 
         {/* Right: Actions */}
         <div className="flex items-center gap-4">
-          {/* Store Switcher Toggle Switch using standard Tailwind sizes to render correctly */}
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/80 rounded-xl px-2.5 py-1.5 shadow-sm select-none">
-            <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider hidden sm:inline">
-              Store Status:
-            </span>
-            <button
-              onClick={handleToggle}
-              disabled={loading}
-              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                storeOpenStatus ? "bg-primary" : "bg-red-500"
-              }`}
-            >
-              <span
-                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                  storeOpenStatus ? "translate-x-5" : "translate-x-0"
-                }`}
-              />
-            </button>
-            <span className={`text-[10px] font-black tracking-wider ${storeOpenStatus ? "text-primary" : "text-red-500"}`}>
-              {storeOpenStatus ? "OPEN" : "CLOSED"}
-            </span>
-          </div>
-
           {/* Navigation links hidden on mobile since mobile bottom nav is active */}
           <Link href="/" className="text-xs font-extrabold text-slate-500 hover:text-primary transition-colors duration-150 hidden md:inline">
             Dashboard
