@@ -81,7 +81,7 @@ export default function MapPicker({ lat, lon, storeLat, storeLon, radiusKm, onCh
     const map = L.map(mapContainerRef.current, {
       zoomControl: true,
       scrollWheelZoom: true,
-    }).setView([lat || STORE_LAT, lon || STORE_LON], 15);
+    }).setView([lat || activeStoreLat, lon || activeStoreLon], 15);
     mapInstanceRef.current = map;
 
     // Add CartoDB Voyager Tiles (Modern & clean map design)
