@@ -8,6 +8,7 @@ import { LayoutDashboard, ShoppingBasket, ShoppingCart, Tag, TrendingUp, AlertTr
 import Header from "@/components/Header";
 import { createClient } from "@/lib/supabase/client";
 import NotificationManager from "@/components/NotificationManager";
+import StoreStaffManager from "@/components/StoreStaffManager";
 
 interface AdminProduct {
   id: string;
@@ -74,12 +75,12 @@ function AdminPanelContent() {
   const supabase = createClient();
   const [authLoading, setAuthLoading] = useState(true);
   const [loadingData, setLoadingData] = useState(true);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "products" | "orders" | "coupons" | "notifications" | "customers">("orders");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "products" | "orders" | "coupons" | "notifications" | "customers" | "staff">("orders");
 
   // Sync tab state from query parameters (useful when navigating from profile back to admin)
   useEffect(() => {
     const tabParam = searchParams.get("tab");
-    if (tabParam && ["dashboard", "products", "orders", "coupons", "notifications", "customers"].includes(tabParam)) {
+    if (tabParam && ["dashboard", "products", "orders", "coupons", "notifications", "customers", "staff"].includes(tabParam)) {
       setActiveTab(tabParam as any);
     }
   }, [searchParams]);
@@ -1154,6 +1155,7 @@ function AdminPanelContent() {
               { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
               { id: "products", label: "Products & Stock", icon: ShoppingBasket },
               { id: "orders", label: "Orders Manager", icon: ShoppingCart },
+              { id: "staff", label: "Store Staff & Fleet", icon: Users },
               { id: "customers", label: "Customers", icon: Users },
               { id: "coupons", label: "Coupons", icon: Tag },
               { id: "notifications", label: "Notifications Center", icon: Bell },
@@ -2311,6 +2313,18 @@ function AdminPanelContent() {
                   <NotificationManager />
                 </motion.div>
               )}
+
+              {activeTab === "staff" && (
+                <motion.div
+                  key="staff-tab"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <StoreStaffManager />
+                </motion.div>
+              )}
             </AnimatePresence>
           )}
         </div>
@@ -2322,6 +2336,7 @@ function AdminPanelContent() {
           { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
           { id: "products", label: "Products", icon: ShoppingBasket },
           { id: "orders", label: "Orders", icon: ShoppingCart },
+          { id: "staff", label: "Staff", icon: Users },
           { id: "customers", label: "Customers", icon: Users },
           { id: "coupons", label: "Coupons", icon: Tag },
           { id: "notifications", label: "Alerts", icon: Bell },

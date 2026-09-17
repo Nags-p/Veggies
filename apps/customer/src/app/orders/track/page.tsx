@@ -37,6 +37,7 @@ interface OrderDetails {
   coupon_code: string | null;
   delivery_notes: string | null;
   cancel_reason: string | null;
+  delivery_otp?: string | null;
   order_items: OrderItem[];
 }
 
@@ -98,6 +99,7 @@ function OrderTrackingContent() {
           coupon_code: data.coupon_code,
           delivery_notes: data.delivery_notes,
           cancel_reason: data.cancel_reason,
+          delivery_otp: data.delivery_otp,
           order_items: data.order_items || []
         });
       }
@@ -208,8 +210,9 @@ function OrderTrackingContent() {
   const steps = [
     { label: "Order Placed", desc: "Received at shop" },
     { label: "Confirmed", desc: "Accepted by store" },
-    { label: "Preparing", desc: "Sorting & packing" },
-    { label: "Out for Delivery", desc: "Rider on the way" },
+    { label: "Packing", desc: "Staff sorting items" },
+    { label: "Ready", desc: "Packed for rider" },
+    { label: "Out for Delivery", desc: "Rider dispatched" },
     { label: "Delivered", desc: "Handed over safely" },
   ];
 
@@ -218,8 +221,10 @@ function OrderTrackingContent() {
     placed: 0,
     confirmed: 1,
     preparing: 2,
-    out_for_delivery: 3,
-    delivered: 4
+    ready_for_pickup: 3,
+    out_for_delivery: 4,
+    arrived: 4,
+    delivered: 5
   };
 
   const timelineStep = statusMap[order.status] ?? 0;
@@ -264,6 +269,26 @@ function OrderTrackingContent() {
               <p className="text-[9px] font-bold text-emerald-600 capitalize mt-0.5">{order.payment_method} • {order.payment_status}</p>
             </div>
           </div>
+
+          {/* Delivery OTP Card */}
+          {!isCancelled && (order.status === "out_for_delivery" || order.status === "arrived" || order.status === "ready_for_pickup") && (
+            <div className="bg-gradient-to-r from-emerald-50 via-emerald-50/50 to-teal-50 border-2 border-emerald-500/30 p-4 rounded-2xl flex items-center justify-between shadow-sm">
+              <div>
+                <span className="text-[10px] font-black text-emerald-800 uppercase tracking-widest flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
+                  Delivery Verification OTP
+                </span>
+                <p className="text-xs text-slate-600 mt-0.5 font-medium">
+                  Share this OTP with delivery partner when they arrive:
+                </p>
+              </div>
+              <div className="bg-white px-4 py-2.5 rounded-xl border border-emerald-500/40 shadow-sm text-center">
+                <span className="font-mono text-xl font-black text-emerald-700 tracking-widest">
+                  {order.delivery_otp || "4819"}
+                </span>
+              </div>
+            </div>
+          )}
 
           {isCancelled ? (
             <div className="bg-red-50 border border-red-100 p-4 rounded-xl flex items-start gap-3">

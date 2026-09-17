@@ -61,3 +61,11 @@
 - [x] Built Products list and stock editor CRUD interface
 - [x] Built active orders editor with status selectors
 - [x] Built active coupons activator/deactivator switch toggles
+
+## Phase 11: Multi-App Ecosystem & Role Decoupling (Completed)
+- [x] Restructured ecosystem into 4 actors: `customer`, `staff`, `delivery`, `admin` (Owner)
+- [x] Implemented Admin-generated Store Staff Access Codes table (`store_staff_codes`) & RLS policies
+- [x] Built dedicated Store Staff Terminal (`apps/staff`) with PIN keypad login and item picking checklist
+- [x] Built dedicated Delivery Partner App (`apps/delivery`) with duty toggle, Google Maps intent, and Customer OTP & COD cash verification
+- [x] Added Store Staff Access Code Manager and Delivery Fleet COD Cash Reconciliation to Owner Web Admin (`apps/admin`)
+- [x] Updated Customer App tracking (`apps/customer`) to display the 4-digit Delivery OTP and 6-stage delivery pipeline

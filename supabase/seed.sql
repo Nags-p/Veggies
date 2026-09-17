@@ -49,3 +49,8 @@ insert into public.coupons (id, code, discount_type, discount_value, min_order_v
 (gen_random_uuid(), 'VEGGIES100', 'flat', 100.00, 499.00, 100.00, now(), now() + interval '30 days', true),
 (gen_random_uuid(), 'FRESH20', 'percentage', 20.00, 299.00, 80.00, now(), now() + interval '60 days', true),
 (gen_random_uuid(), 'WELCOME50', 'flat', 50.00, 199.00, 50.00, now(), now() + interval '365 days', true);
+
+-- Insert Default Store Staff Codes for Staff Terminal Login
+insert into public.store_staff_codes (id, store_name, access_code, is_active) values
+('e1111111-1111-1111-1111-111111111111', 'Veggies Flagship Store (Indiranagar)', '492810', true),
+('e2222222-2222-2222-2222-222222222222', 'Veggies Express Store (Koramangala)', '773901', true);

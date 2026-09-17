@@ -4,15 +4,23 @@
   "workspaces": [
     "apps/customer",
     "apps/admin",
+    "apps/staff",
+    "apps/delivery",
     "packages/shared"
   ],
   "scripts": {
     "dev:customer": "npm run dev --workspace=apps/customer",
     "dev:admin": "npm run dev --workspace=apps/admin",
+    "dev:staff": "npm run dev --workspace=apps/staff",
+    "dev:delivery": "npm run dev --workspace=apps/delivery",
     "build:customer": "npm run build --workspace=apps/customer",
     "build:admin": "npm run build --workspace=apps/admin",
+    "build:staff": "npm run build --workspace=apps/staff",
+    "build:delivery": "npm run build --workspace=apps/delivery",
     "start:customer": "npm run start --workspace=apps/customer",
-    "start:admin": "npm run start --workspace=apps/admin"
+    "start:admin": "npm run start --workspace=apps/admin",
+    "start:staff": "npm run start --workspace=apps/staff",
+    "start:delivery": "npm run start --workspace=apps/delivery"
   },
   "dependencies": {
     "@supabase/ssr": "^0.3.0",

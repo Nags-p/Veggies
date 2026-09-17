@@ -1,0 +1,17 @@
+{
+  "name": "staff-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3002",
+    "build": "next build",
+    "start": "next start -p 3002",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@veggies/shared": "*",
+    "@capacitor/app": "^6.0.0",
+    "@capacitor/local-notifications": "^6.1.0",
+    "@capacitor/push-notifications": "^6.0.0"
+  }
+}
