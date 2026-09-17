@@ -76,79 +76,10 @@ export default function DeliveryPartnerPage() {
         `)
         .order("created_at", { ascending: false });
 
-      if (error || !data || data.length === 0) {
-        // Fallback realistic driver orders
-        const sampleReady: Order[] = [
-          {
-            id: "ord-1042",
-            profile_id: "demo-cust-1",
-            status: "ready_for_pickup",
-            total_amount: 486.0,
-            discount_amount: 30.0,
-            delivery_fee: 20.0,
-            net_amount: 456.0,
-            payment_method: "COD",
-            payment_status: "pending",
-            delivery_notes: "Leave with security guard if not answering",
-            estimated_delivery_time: "15 mins",
-            delivery_otp: "4819",
-            packer_name: "Ramesh (Picker)",
-            created_at: new Date(Date.now() - 10 * 60000).toISOString(),
-            customer: {
-              id: "demo-cust-1",
-              full_name: "Priya Sharma",
-              phone: "+91 98765 43210",
-              role: "customer",
-            },
-            address: {
-              name: "Home",
-              building_name: "Apartment 402, Green Glen",
-              complete_address: "12th Cross, Indiranagar, Bengaluru",
-              latitude: 12.9716,
-              longitude: 77.5946,
-            },
-            order_items: [
-              { id: "i-1", order_id: "ord-1042", name: "Fresh Spinach (Palak)", price: 22, quantity: 2 },
-              { id: "i-2", order_id: "ord-1042", name: "Premium Potato", price: 38, quantity: 2 },
-              { id: "i-3", order_id: "ord-1042", name: "Bell Peppers Trio", price: 125, quantity: 1 },
-            ],
-          },
-          {
-            id: "ord-1040",
-            profile_id: "demo-cust-3",
-            status: "ready_for_pickup",
-            total_amount: 350.0,
-            discount_amount: 0.0,
-            delivery_fee: 20.0,
-            net_amount: 350.0,
-            payment_method: "online",
-            payment_status: "paid",
-            delivery_notes: "Call when arrived at gate",
-            estimated_delivery_time: "10 mins",
-            delivery_otp: "9102",
-            packer_name: "Ramesh (Picker)",
-            created_at: new Date(Date.now() - 15 * 60000).toISOString(),
-            customer: {
-              id: "demo-cust-3",
-              full_name: "Neha Patel",
-              phone: "+91 99887 76655",
-              role: "customer",
-            },
-            address: {
-              name: "Villa 12",
-              building_name: "Palm Meadows",
-              complete_address: "HAL 2nd Stage, Bengaluru",
-              latitude: 12.9698,
-              longitude: 77.6499,
-            },
-            order_items: [
-              { id: "i-4", order_id: "ord-1040", name: "Broccoli Florets", price: 85, quantity: 2 },
-              { id: "i-5", order_id: "ord-1040", name: "Fresh Strawberry Box", price: 95, quantity: 1 },
-            ],
-          },
-        ];
-
-        setAvailableOrders(sampleReady);
+      if (error || !data) {
+        setAvailableOrders([]);
+        setActiveOrder(null);
+        setCompletedOrders([]);
       } else {
         const ready = (data as Order[]).filter((o) => o.status === "ready_for_pickup");
         const active = (data as Order[]).find(
@@ -164,6 +95,8 @@ export default function DeliveryPartnerPage() {
         if (active) {
           setActiveOrder(active);
           setActiveTab("active");
+        } else {
+          setActiveOrder(null);
         }
         setCompletedOrders(completed);
       }

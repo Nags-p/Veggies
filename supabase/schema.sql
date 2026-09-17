@@ -149,6 +149,42 @@ create table public.store_staff_codes (
 -- Enable RLS for Store Staff Codes
 alter table public.store_staff_codes enable row level security;
 
+-- 7c. Store Settings (Key-Value configuration for store timings, status, location, and radius)
+create table public.store_settings (
+    key text primary key,
+    value jsonb not null,
+    updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Enable RLS for Store Settings
+alter table public.store_settings enable row level security;
+
+-- 7d. Stores (Multiple physical store branches with GPS coordinates, phone, delivery radius, and staff access code)
+create table public.stores (
+    id uuid default gen_random_uuid() primary key,
+    name text not null,
+    address text not null,
+    lat numeric(10, 8) not null,
+    lon numeric(11, 8) not null,
+    radius_km numeric(4, 2) default 2.00 not null,
+    phone text,
+    staff_code text,
+    is_active boolean default true not null,
+    created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+    updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Enable RLS for Stores
+alter table public.stores enable row level security;
+
+create policy "Allow public read active stores"
+    on public.stores for select
+    using (true);
+
+create policy "Allow authenticated admin full access on stores"
+    on public.stores for all
+    using (true);
+
 -- 8. Order Items
 create table public.order_items (
     id uuid default gen_random_uuid() primary key,
@@ -347,6 +383,17 @@ create policy "Admins can manage store staff codes"
 
 create policy "Store staff codes can be read for code verification"
   on public.store_staff_codes for select using (is_active = true);
+
+-- STORE SETTINGS
+create policy "Store settings are viewable by everyone" 
+  on public.store_settings for select using (true);
+
+create policy "Store settings can only be modified by admins" 
+  on public.store_settings for all using (
+    exists (
+      select 1 from public.profiles where profiles.id = auth.uid() and profiles.role = 'admin'
+    )
+  );
 
 -- ORDER ITEMS
 create policy "Users can view their own order items" 

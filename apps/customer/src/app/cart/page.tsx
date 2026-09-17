@@ -9,12 +9,14 @@ import { ShoppingBag, ArrowLeft, Trash2, Plus, Minus, ShieldCheck, ArrowRight, M
 import { useCart } from "@/context/CartContext";
 import { createClient } from "@/lib/supabase/client";
 import FooterNav from "@/components/FooterNav";
+import { useLocation } from "@/context/LocationContext";
 
 function CartContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const couponParam = searchParams.get("coupon");
   const supabase = createClient();
+  const { storeLocation } = useLocation();
   const {
     cart,
     updateQuantity,
@@ -44,8 +46,8 @@ function CartContent() {
   const [completeAddress, setCompleteAddress] = useState("");
   const [addressLabel, setAddressLabel] = useState("Home");
   const [savingAddress, setSavingAddress] = useState(false);
-  const [lat, setLat] = useState(13.0017689);
-  const [lng, setLng] = useState(77.5777957);
+  const [lat, setLat] = useState(storeLocation?.lat || 12.9784);
+  const [lng, setLng] = useState(storeLocation?.lon || 77.6408);
 
   // Coupons
   const [coupons, setCoupons] = useState<any[]>([]);
@@ -181,9 +183,10 @@ function CartContent() {
     return () => window.removeEventListener("message", handleMessage);
   }, []);
 
-  // Distance helper (Haversine formula) to check store service radius (2.0 KM)
-  const STORE_LAT = 13.0017689;
-  const STORE_LON = 77.5777957;
+  // Distance helper (Haversine formula) to check store service radius
+  const STORE_LAT = storeLocation?.lat || 12.971598;
+  const STORE_LON = storeLocation?.lon || 77.594562;
+  const STORE_RADIUS = storeLocation?.radius_km || 2.0;
 
   function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
     const R = 6371; // Earth radius in KM
@@ -934,7 +937,7 @@ function CartContent() {
                     {/* Serviceable area check */}
                     {(() => {
                       const distance = calculateDistance(STORE_LAT, STORE_LON, lat, lng);
-                      const isServiceable = distance <= 2.0;
+                      const isServiceable = distance <= STORE_RADIUS;
                       return (
                         <div className={`p-3.5 rounded-2xl border text-[11px] font-semibold text-left space-y-1 ${
                           isServiceable 
@@ -1019,7 +1022,7 @@ function CartContent() {
                           onClick={async () => {
                             await handleSaveAddress();
                           }}
-                          disabled={savingAddress || calculateDistance(STORE_LAT, STORE_LON, lat, lng) > 2.0}
+                          disabled={savingAddress || calculateDistance(STORE_LAT, STORE_LON, lat, lng) > STORE_RADIUS}
                           className="flex-1 bg-primary hover:bg-primary-dark text-white py-2 rounded-xl text-xs font-bold shadow-sm cursor-pointer disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed transition-all"
                         >
                           {savingAddress ? "Saving..." : "Save Address"}

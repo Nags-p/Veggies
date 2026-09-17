@@ -5,6 +5,7 @@ import React, { useEffect, useRef, useState } from "react";
 interface MapPickerProps {
   lat: number;
   lon: number;
+  radiusKm?: number;
   onChange: (
     lat: number,
     lon: number,
@@ -20,7 +21,7 @@ interface MapPickerProps {
 const STORE_LAT = parseFloat(process.env.NEXT_PUBLIC_STORE_LAT || "12.971598");
 const STORE_LON = parseFloat(process.env.NEXT_PUBLIC_STORE_LON || "77.594562");
 
-export default function MapPicker({ lat, lon, onChange }: MapPickerProps) {
+export default function MapPicker({ lat, lon, radiusKm = 2.0, onChange }: MapPickerProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -30,6 +31,7 @@ export default function MapPicker({ lat, lon, onChange }: MapPickerProps) {
   
   const mapInstanceRef = useRef<any>(null);
   const markerInstanceRef = useRef<any>(null);
+  const circleInstanceRef = useRef<any>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load Leaflet CSS and JS via CDN
@@ -70,12 +72,14 @@ export default function MapPicker({ lat, lon, onChange }: MapPickerProps) {
     if (!leafletLoaded || !mapContainerRef.current || mapInstanceRef.current) return;
 
     const L = (window as any).L;
+    const initialLat = lat || STORE_LAT;
+    const initialLon = lon || STORE_LON;
 
     // Create Map
     const map = L.map(mapContainerRef.current, {
       zoomControl: true,
       scrollWheelZoom: true,
-    }).setView([lat || STORE_LAT, lon || STORE_LON], 15);
+    }).setView([initialLat, initialLon], 15);
     mapInstanceRef.current = map;
 
     // Add CartoDB Voyager Tiles (Modern & clean map design)
@@ -85,16 +89,17 @@ export default function MapPicker({ lat, lon, onChange }: MapPickerProps) {
       maxZoom: 20
     }).addTo(map);
 
-    // Add 2KM Delivery Circle (emerald green)
-    L.circle([STORE_LAT, STORE_LON], {
+    // Add Delivery Circle centered on store pin (emerald green)
+    const circle = L.circle([initialLat, initialLon], {
       color: "#10B981", // Emerald-500
       fillColor: "#10B981",
-      fillOpacity: 0.1,
-      radius: 2000, // 2 KM
+      fillOpacity: 0.12,
+      radius: (radiusKm || 2.0) * 1000,
     }).addTo(map);
+    circleInstanceRef.current = circle;
 
     // Create Draggable Delivery Marker
-    const marker = L.marker([lat || STORE_LAT, lon || STORE_LON], {
+    const marker = L.marker([initialLat, initialLon], {
       draggable: true,
     }).addTo(map);
     markerInstanceRef.current = marker;
@@ -113,15 +118,28 @@ export default function MapPicker({ lat, lon, onChange }: MapPickerProps) {
           let state = data.address?.state || "Karnataka";
 
           onChange(lLat, lLon, data.display_name, { postalCode, city, state });
+        } else {
+          onChange(lLat, lLon);
         }
       } catch (err) {
         console.error("Reverse geocoding failed:", err);
+        onChange(lLat, lLon);
       }
     };
 
     // Listen to marker drag events
+    marker.on("drag", () => {
+      const position = marker.getLatLng();
+      if (circleInstanceRef.current) {
+        circleInstanceRef.current.setLatLng(position);
+      }
+    });
+
     marker.on("dragend", () => {
       const position = marker.getLatLng();
+      if (circleInstanceRef.current) {
+        circleInstanceRef.current.setLatLng(position);
+      }
       reverseGeocode(position.lat, position.lng);
     });
 
@@ -129,6 +147,9 @@ export default function MapPicker({ lat, lon, onChange }: MapPickerProps) {
     map.on("click", (e: any) => {
       const clickedPos = e.latlng;
       marker.setLatLng(clickedPos);
+      if (circleInstanceRef.current) {
+        circleInstanceRef.current.setLatLng(clickedPos);
+      }
       reverseGeocode(clickedPos.lat, clickedPos.lng);
     });
 
@@ -138,7 +159,7 @@ export default function MapPicker({ lat, lon, onChange }: MapPickerProps) {
     }, 100);
   }, [leafletLoaded]);
 
-  // Update marker position if props change externally
+  // Update marker & circle position if props change externally
   useEffect(() => {
     if (!leafletLoaded || !markerInstanceRef.current || !mapInstanceRef.current) return;
 
@@ -146,9 +167,13 @@ export default function MapPicker({ lat, lon, onChange }: MapPickerProps) {
     if (Math.abs(currentPos.lat - lat) > 0.0001 || Math.abs(currentPos.lng - lon) > 0.0001) {
       const newPos = [lat, lon];
       markerInstanceRef.current.setLatLng(newPos);
+      if (circleInstanceRef.current) {
+        circleInstanceRef.current.setLatLng(newPos);
+        circleInstanceRef.current.setRadius((radiusKm || 2.0) * 1000);
+      }
       mapInstanceRef.current.panTo(newPos);
     }
-  }, [lat, lon, leafletLoaded]);
+  }, [lat, lon, radiusKm, leafletLoaded]);
 
   // Fetch address suggestions from free OpenStreetMap Nominatim API
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -193,6 +218,9 @@ export default function MapPicker({ lat, lon, onChange }: MapPickerProps) {
     if (mapInstanceRef.current && markerInstanceRef.current) {
       mapInstanceRef.current.setView([newLat, newLon], 16);
       markerInstanceRef.current.setLatLng([newLat, newLon]);
+      if (circleInstanceRef.current) {
+        circleInstanceRef.current.setLatLng([newLat, newLon]);
+      }
       
       let postalCode = s.address?.postcode || s.address?.postal_code || "";
       let city = s.address?.city || s.address?.town || s.address?.village || s.address?.suburb || "Bengaluru";
@@ -217,6 +245,9 @@ export default function MapPicker({ lat, lon, onChange }: MapPickerProps) {
         if (mapInstanceRef.current && markerInstanceRef.current) {
           mapInstanceRef.current.setView([newLat, newLon], 16);
           markerInstanceRef.current.setLatLng([newLat, newLon]);
+          if (circleInstanceRef.current) {
+            circleInstanceRef.current.setLatLng([newLat, newLon]);
+          }
 
           // Reverse geocode to get human readable address and details
           try {

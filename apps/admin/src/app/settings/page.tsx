@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import Header from "@/components/Header";
 import FooterNav from "@/components/FooterNav";
 import Link from "next/link";
+import StoreLocationManager from "@/components/StoreLocationManager";
 
 interface Profile {
   id: string;
@@ -469,6 +470,9 @@ export default function AdminSettingsPage() {
             </button>
           </div>
         </motion.div>
+
+        {/* Store Details & 2KM Delivery Radius Manager */}
+        <StoreLocationManager />
       </main>
 
       <FooterNav />

@@ -32,77 +32,101 @@ export default function StaffLoginPage() {
 
     try {
       const supabase = createClient();
-      // Check code against store_staff_codes table
-      const { data: codeRecord, error: dbError } = await supabase
+
+      // 1. Primary Check: stores table (is cleanCode the CURRENT staff_code of an active store?)
+      const { data: activeStore, error: storeErr } = await supabase
+        .from("stores")
+        .select("id, name, staff_code, is_active")
+        .eq("staff_code", cleanCode)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (activeStore) {
+        const staffSession = {
+          store_code: activeStore.staff_code,
+          store_name: activeStore.name,
+          staff_name: cleanName,
+          login_time: new Date().toISOString(),
+        };
+        localStorage.setItem("veggies_staff_session", JSON.stringify(staffSession));
+        router.push("/");
+        return;
+      }
+
+      // 2. Check store_settings 'stores_list' (live JSON sync maintained by Admin)
+      const { data: settingsList } = await supabase
+        .from("store_settings")
+        .select("key, value")
+        .eq("key", "stores_list")
+        .maybeSingle();
+
+      if (settingsList && Array.isArray(settingsList.value)) {
+        const matched = settingsList.value.find(
+          (s: any) => s.staff_code === cleanCode && (s.is_active ?? true)
+        );
+        if (matched) {
+          const staffSession = {
+            store_code: matched.staff_code,
+            store_name: matched.name,
+            staff_name: cleanName,
+            login_time: new Date().toISOString(),
+          };
+          localStorage.setItem("veggies_staff_session", JSON.stringify(staffSession));
+          router.push("/");
+          return;
+        }
+
+        // If stores_list is present and active, and this code isn't in it, it is invalid or rotated!
+        const wasRotated = settingsList.value.some((s: any) => s.staff_code !== cleanCode);
+        if (wasRotated) {
+          setError("This PIN is invalid or has been rotated by Admin. Please check the active PIN in the Admin App.");
+          setLoading(false);
+          return;
+        }
+      }
+
+      // 3. Check store_staff_codes table as fallback
+      const { data: codeRecord } = await supabase
         .from("store_staff_codes")
         .select("id, store_name, access_code, is_active")
         .eq("access_code", cleanCode)
         .eq("is_active", true)
         .maybeSingle();
 
-      if (dbError && dbError.code !== "PGRST116") {
-        // Fallback for offline or dev seed code
-        if (cleanCode === "492810" || cleanCode === "773901") {
-          const mockSession = {
-            store_code: cleanCode,
-            store_name: cleanCode === "492810" ? "Veggies Indiranagar" : "Veggies Koramangala",
-            staff_name: cleanName,
-            login_time: new Date().toISOString(),
-          };
-          localStorage.setItem("veggies_staff_session", JSON.stringify(mockSession));
-          router.push("/");
+      if (codeRecord) {
+        // Cross-verify with stores table to make sure the store hasn't rotated to a new PIN
+        const { data: storeCheck } = await supabase
+          .from("stores")
+          .select("name, staff_code, is_active")
+          .eq("name", codeRecord.store_name)
+          .maybeSingle();
+
+        if (storeCheck && storeCheck.staff_code !== cleanCode) {
+          setError("This PIN has expired or was rotated by the Admin. Please enter the latest PIN.");
+          setLoading(false);
           return;
         }
-        throw dbError;
-      }
 
-      if (!codeRecord) {
-        // Fallback check for dev mode default codes
-        if (cleanCode === "492810" || cleanCode === "773901") {
-          const mockSession = {
-            store_code: cleanCode,
-            store_name: cleanCode === "492810" ? "Veggies Indiranagar" : "Veggies Koramangala",
-            staff_name: cleanName,
-            login_time: new Date().toISOString(),
-          };
-          localStorage.setItem("veggies_staff_session", JSON.stringify(mockSession));
-          router.push("/");
-          return;
-        }
-        setError("Invalid or deactivated store code. Please ask your store owner/admin.");
-        setLoading(false);
-        return;
-      }
+        await supabase
+          .from("store_staff_codes")
+          .update({ last_used_at: new Date().toISOString() })
+          .eq("id", codeRecord.id);
 
-      // Update last_used_at timestamp
-      await supabase
-        .from("store_staff_codes")
-        .update({ last_used_at: new Date().toISOString() })
-        .eq("id", codeRecord.id);
-
-      const staffSession = {
-        store_code: codeRecord.access_code,
-        store_name: codeRecord.store_name,
-        staff_name: cleanName,
-        login_time: new Date().toISOString(),
-      };
-
-      localStorage.setItem("veggies_staff_session", JSON.stringify(staffSession));
-      router.push("/");
-    } catch (err: any) {
-      console.error("Login failed:", err);
-      // If network fails in local dev, allow test code
-      if (cleanCode === "492810" || cleanCode === "773901") {
-        const mockSession = {
-          store_code: cleanCode,
-          store_name: "Veggies Store Terminal",
+        const staffSession = {
+          store_code: codeRecord.access_code,
+          store_name: codeRecord.store_name,
           staff_name: cleanName,
           login_time: new Date().toISOString(),
         };
-        localStorage.setItem("veggies_staff_session", JSON.stringify(mockSession));
+
+        localStorage.setItem("veggies_staff_session", JSON.stringify(staffSession));
         router.push("/");
         return;
       }
+
+      setError("Invalid store PIN. Please verify the active 6-digit code in the Admin Stores tab.");
+    } catch (err: any) {
+      console.error("Login verification failed:", err);
       setError(err?.message || "Failed to verify store access code");
     } finally {
       setLoading(false);
@@ -176,20 +200,6 @@ export default function StaffLoginPage() {
                 required
               />
             </div>
-          </div>
-
-          {/* Quick preset for testing */}
-          <div className="pt-1">
-            <button
-              type="button"
-              onClick={() => {
-                setStoreCode("492810");
-                setStaffName("Ramesh (Picker)");
-              }}
-              className="text-xs text-emerald-400 hover:text-emerald-300 underline font-medium"
-            >
-              Fill Demo Store Code (492810)
-            </button>
           </div>
 
           <button

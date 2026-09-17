@@ -29,25 +29,6 @@ interface Order {
   cancel_reason?: string | null;
 }
 
-const mockPastOrders: any[] = [
-  {
-    id: "ORD-98432",
-    date: "14 June 2026, 06:12 PM",
-    items: "Royal Gala Apple (x1), Nashik Red Onion (x1), Fresh Spinach (x2)",
-    total: 212.00,
-    status: "delivered",
-    payment_method: "COD",
-  },
-  {
-    id: "ORD-97304",
-    date: "08 June 2026, 11:34 AM",
-    items: "Organic Hass Avocado (x1), Tri-Color Bell Peppers (x1)",
-    total: 315.00,
-    status: "delivered",
-    payment_method: "online",
-  },
-];
-
 function OrdersPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();

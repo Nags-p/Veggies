@@ -118,3 +118,112 @@ export type StaffSession = {
   staff_name: string;
   login_time: string;
 };
+
+export type Store = {
+  id: string;
+  name: string;
+  address: string;
+  lat: number;
+  lon: number;
+  radius_km: number;
+  phone?: string;
+  is_active: boolean;
+  staff_code?: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export const DEFAULT_STORES: Store[] = [
+  {
+    id: "store-indiranagar",
+    name: "Veggies Flagship Store (Indiranagar)",
+    address: "12th Cross, Indiranagar, Bengaluru",
+    lat: 12.9784,
+    lon: 77.6408,
+    radius_km: 2.0,
+    phone: "+91 98765 43210",
+    is_active: true,
+    staff_code: "492810",
+  },
+  {
+    id: "store-koramangala",
+    name: "Veggies Express Store (Koramangala)",
+    address: "5th Block, Koramangala, Bengaluru",
+    lat: 12.9352,
+    lon: 77.6245,
+    radius_km: 2.0,
+    phone: "+91 98765 43211",
+    is_active: true,
+    staff_code: "773901",
+  },
+];
+
+export type StoreLocation = {
+  name: string;
+  address: string;
+  lat: number;
+  lon: number;
+  radius_km: number;
+  phone?: string;
+};
+
+export const DEFAULT_STORE_LOCATION: StoreLocation = {
+  name: "Veggies Flagship Store (Indiranagar)",
+  address: "12th Cross, Indiranagar, Bengaluru",
+  lat: 12.9784,
+  lon: 77.6408,
+  radius_km: 2.0,
+  phone: "+91 98765 43210",
+};
+
+// Haversine formula to compute geodesic distance in KM
+export function getDistanceInKm(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 6371; // Earth radius in KM
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// Find nearest store from a list of stores
+export function getNearestStore(
+  lat: number,
+  lon: number,
+  stores: (Store | StoreLocation)[]
+): { store: (Store | StoreLocation) | null; distance: number; isDeliverable: boolean } {
+  if (!stores || stores.length === 0) {
+    return { store: null, distance: 999999, isDeliverable: false };
+  }
+
+  // Filter active stores if Store type
+  const candidateStores = stores.filter((s) => ("is_active" in s ? s.is_active : true));
+  if (candidateStores.length === 0) {
+    return { store: null, distance: 999999, isDeliverable: false };
+  }
+
+  let nearest: (Store | StoreLocation) | null = null;
+  let minDistance = Infinity;
+
+  for (const s of candidateStores) {
+    const d = getDistanceInKm(s.lat, s.lon, lat, lon);
+    if (d < minDistance) {
+      minDistance = d;
+      nearest = s;
+    }
+  }
+
+  const isDeliverable = nearest ? minDistance <= (nearest.radius_km || 2.0) : false;
+  return { store: nearest, distance: minDistance, isDeliverable };
+}
+

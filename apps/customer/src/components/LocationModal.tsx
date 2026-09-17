@@ -6,28 +6,23 @@ import { useLocation } from "@/context/LocationContext";
 import { createClient } from "@/lib/supabase/client";
 import MapPicker from "./MapPicker";
 
-const STORE_LAT = parseFloat(process.env.NEXT_PUBLIC_STORE_LAT || "13.0017689");
-const STORE_LON = parseFloat(process.env.NEXT_PUBLIC_STORE_LON || "77.5777957");
-
-// Haversine formula to compute distance in KM
-function getDistanceInKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371; // Earth radius in KM
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
 export default function LocationModal() {
-  const { location, showLocationModal, setShowLocationModal, setSavedLocation } = useLocation();
-  const [tempLat, setTempLat] = useState<number>(STORE_LAT);
-  const [tempLon, setTempLon] = useState<number>(STORE_LON);
+  const {
+    location,
+    storeLocation,
+    stores,
+    nearestStore,
+    showLocationModal,
+    setShowLocationModal,
+    setSavedLocation,
+    getDistanceInKm,
+  } = useLocation();
+
+  const [tempLat, setTempLat] = useState<number>(storeLocation.lat);
+  const [tempLon, setTempLon] = useState<number>(storeLocation.lon);
   const [tempAddress, setTempAddress] = useState<string>("");
   const [distance, setDistance] = useState<number>(0);
+  const [currentNearest, setCurrentNearest] = useState<any>(nearestStore || storeLocation);
 
   // Address selection states
   const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
@@ -37,12 +32,20 @@ export default function LocationModal() {
   // Sync temp coordinates with current location when modal opens
   useEffect(() => {
     if (showLocationModal) {
-      const activeLat = location?.lat || STORE_LAT;
-      const activeLon = location?.lon || STORE_LON;
+      const activeLat = location?.lat || storeLocation.lat;
+      const activeLon = location?.lon || storeLocation.lon;
       setTempLat(activeLat);
       setTempLon(activeLon);
-      setTempAddress(location?.address || "Veggies Shop, Malleshwaram");
-      setDistance(getDistanceInKm(STORE_LAT, STORE_LON, activeLat, activeLon));
+      setTempAddress(location?.address || `${storeLocation.name}, ${storeLocation.address}`);
+      
+      const res = stores && stores.length > 0
+        ? stores.map(s => ({ store: s, d: getDistanceInKm(s.lat, s.lon, activeLat, activeLon) })).sort((a, b) => a.d - b.d)[0]
+        : null;
+
+      const activeNearest = res ? res.store : storeLocation;
+      const activeDist = res ? res.d : getDistanceInKm(storeLocation.lat, storeLocation.lon, activeLat, activeLon);
+      setCurrentNearest(activeNearest);
+      setDistance(activeDist);
 
       // Fetch saved addresses from Supabase database
       const fetchAddresses = async () => {
@@ -88,11 +91,20 @@ export default function LocationModal() {
     if (address) {
       setTempAddress(address);
     }
-    const dist = getDistanceInKm(STORE_LAT, STORE_LON, newLat, newLon);
-    setDistance(dist);
+    const res = stores && stores.length > 0
+      ? stores.map(s => ({ store: s, d: getDistanceInKm(s.lat, s.lon, newLat, newLon) })).sort((a, b) => a.d - b.d)[0]
+      : null;
+
+    if (res) {
+      setCurrentNearest(res.store);
+      setDistance(res.d);
+    } else {
+      const dist = getDistanceInKm(storeLocation.lat, storeLocation.lon, newLat, newLon);
+      setDistance(dist);
+    }
   };
 
-  const isTempServiceable = distance <= 2.0;
+  const isTempServiceable = distance <= (currentNearest?.radius_km || storeLocation.radius_km || 2.0);
   const canClose = !!location;
 
   const handleConfirm = () => {
@@ -205,7 +217,14 @@ export default function LocationModal() {
                 </button>
               )}
 
-              <MapPicker lat={tempLat} lon={tempLon} onChange={handleMapChange} />
+              <MapPicker
+                lat={tempLat}
+                lon={tempLon}
+                storeLat={currentNearest?.lat || storeLocation.lat}
+                storeLon={currentNearest?.lon || storeLocation.lon}
+                radiusKm={currentNearest?.radius_km || storeLocation.radius_km}
+                onChange={handleMapChange}
+              />
 
               {/* Serviceability Banner */}
               {distance > 0 && (
@@ -218,16 +237,24 @@ export default function LocationModal() {
                     <>
                       <MapPin className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
                       <div>
-                        <p className="font-extrabold text-emerald-900">Serviceable Location (approx. {distance.toFixed(2)} KM away)</p>
-                        <p className="text-[10px] text-emerald-700/80 leading-snug">Veggies 10-minute delivery is available for this location.</p>
+                        <p className="font-extrabold text-emerald-900">
+                          Serviceable Location ({distance.toFixed(2)} KM from {currentNearest?.name || "our store"})
+                        </p>
+                        <p className="text-[10px] text-emerald-700/80 leading-snug">
+                          Express 10-minute delivery is active from {currentNearest?.name || "our branch"}.
+                        </p>
                       </div>
                     </>
                   ) : (
                     <>
                       <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
                       <div>
-                        <p className="font-extrabold text-red-900">Out of Serviceable Area ({distance.toFixed(2)} KM away)</p>
-                        <p className="text-[10px] text-red-700/80 leading-snug">We currently only deliver within our delivery range. Please pick a location closer to Malleshwaram.</p>
+                        <p className="font-extrabold text-red-900">
+                          Out of Serviceable Area ({distance.toFixed(2)} KM away)
+                        </p>
+                        <p className="text-[10px] text-red-700/80 leading-snug">
+                          We only deliver within {currentNearest?.radius_km || 2.0} KM of our branches. Nearest branch is {currentNearest?.name || "our store"} ({distance.toFixed(2)} KM away).
+                        </p>
                       </div>
                     </>
                   )}

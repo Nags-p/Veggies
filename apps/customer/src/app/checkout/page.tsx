@@ -12,23 +12,6 @@ import { useLocation } from "@/context/LocationContext";
 import { createClient } from "@/lib/supabase/client";
 import { useStore } from "@/context/StoreContext";
 
-// Store coordinates: Veggies Main Shop
-const STORE_LAT = parseFloat(process.env.NEXT_PUBLIC_STORE_LAT || "12.971598");
-const STORE_LON = parseFloat(process.env.NEXT_PUBLIC_STORE_LON || "77.594562");
-
-// Haversine formula to compute distance in KM
-function getDistanceInKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371; // Earth radius
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
 const timeSlots = [
   "Immediate (10 Mins)",
   "Morning Slot (08:00 AM - 11:00 AM)",
@@ -40,7 +23,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const supabase = createClient();
   const { cart, subtotal, savings, deliveryFee, netAmount, clearCart } = useCart();
-  const { location, isServiceable, setShowLocationModal } = useLocation();
+  const { location, storeLocation, stores, nearestStore, isServiceable, setShowLocationModal, getDistanceInKm } = useLocation();
   const { isStoreOpen, storeTimings } = useStore();
 
   const [authLoading, setAuthLoading] = useState(true);
@@ -80,8 +63,8 @@ export default function CheckoutPage() {
   }, [router, supabase]);
 
   // Read coordinates and address line 2 dynamically from context
-  const lat = location?.lat.toFixed(6) || STORE_LAT.toFixed(6);
-  const lon = location?.lon.toFixed(6) || STORE_LON.toFixed(6);
+  const lat = location?.lat.toFixed(6) || (storeLocation?.lat || 12.971598).toFixed(6);
+  const lon = location?.lon.toFixed(6) || (storeLocation?.lon || 77.594562).toFixed(6);
   const addressLine2 = location?.complete_address || location?.address || "";
 
   const [selectedSlot, setSelectedSlot] = useState(timeSlots[0]);
@@ -149,11 +132,18 @@ export default function CheckoutPage() {
       return;
     }
 
-    const distance = getDistanceInKm(STORE_LAT, STORE_LON, latitude, longitude);
+    const candidateList = stores && stores.length > 0 ? stores : [storeLocation as any];
+    const res = candidateList
+      .map((s: any) => ({ store: s, d: getDistanceInKm(s.lat, s.lon, latitude, longitude) }))
+      .sort((a: any, b: any) => a.d - b.d)[0];
 
-    if (distance > 2.0) {
+    const nearestTarget = res ? res.store : storeLocation;
+    const distance = res ? res.d : getDistanceInKm(storeLocation.lat, storeLocation.lon, latitude, longitude);
+    const maxRadius = nearestTarget?.radius_km || 2.0;
+
+    if (distance > maxRadius) {
       setRadiusError(
-        `Delivery address is ${distance.toFixed(2)} KM away, which exceeds our maximum delivery radius of 2 KM.`
+        `Delivery address is ${distance.toFixed(2)} KM away, which exceeds our maximum delivery radius of ${maxRadius.toFixed(1)} KM from our nearest branch (${nearestTarget?.name || "our store"}).`
       );
       return;
     }

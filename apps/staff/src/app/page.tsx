@@ -31,6 +31,7 @@ export default function StaffTerminalPage() {
   const [itemChecklist, setItemChecklist] = useState<Record<string, boolean>>({});
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
 
   // Play audio chime for new incoming orders
   const playAlertSound = useCallback(() => {
@@ -82,158 +83,8 @@ export default function StaffTerminalPage() {
         `)
         .order("created_at", { ascending: false });
 
-      if (error || !data || data.length === 0) {
-        // Fallback sample data for store staff operational testing
-        const sampleOrders: Order[] = [
-          {
-            id: "ord-1042",
-            profile_id: "demo-cust-1",
-            status: "preparing",
-            total_amount: 486.0,
-            discount_amount: 50.0,
-            delivery_fee: 20.0,
-            net_amount: 456.0,
-            payment_method: "COD",
-            payment_status: "pending",
-            delivery_notes: "Leave with security guard if not answering",
-            estimated_delivery_time: "15 mins",
-            packer_name: session?.staff_name || "Ramesh (Picker)",
-            delivery_otp: "4819",
-            created_at: new Date(Date.now() - 5 * 60000).toISOString(),
-            customer: {
-              id: "demo-cust-1",
-              full_name: "Priya Sharma",
-              phone: "+91 98765 43210",
-              role: "customer",
-            },
-            address: {
-              name: "Home",
-              building_name: "Apartment 402, Green Glen",
-              complete_address: "12th Cross, Indiranagar, Bengaluru",
-              latitude: 12.9716,
-              longitude: 77.5946,
-            },
-            order_items: [
-              {
-                id: "item-1",
-                order_id: "ord-1042",
-                name: "Fresh Spinach (Palak) - 250g bunch",
-                price: 22.0,
-                quantity: 2,
-                image_url: "https://images.unsplash.com/photo-1576045057995-568f588f82fb?q=80&w=200",
-              },
-              {
-                id: "item-2",
-                order_id: "ord-1042",
-                name: "Premium Potato (Jyoti) - 1 kg",
-                price: 38.0,
-                quantity: 2,
-                image_url: "https://images.unsplash.com/photo-1518977676601-b53f82aba655?q=80&w=200",
-              },
-              {
-                id: "item-3",
-                order_id: "ord-1042",
-                name: "Tri-Color Bell Peppers - 3 pcs",
-                price: 125.0,
-                quantity: 1,
-                image_url: "https://images.unsplash.com/photo-1566393028639-d108a42c46a7?q=80&w=200",
-              },
-              {
-                id: "item-4",
-                order_id: "ord-1042",
-                name: "Fresh Coriander (Dhaniya) - 100g",
-                price: 12.0,
-                quantity: 1,
-                image_url: "https://images.unsplash.com/photo-1597362925123-77861d3fbac7?q=80&w=200",
-              },
-            ],
-          },
-          {
-            id: "ord-1043",
-            profile_id: "demo-cust-2",
-            status: "pending",
-            total_amount: 320.0,
-            discount_amount: 0.0,
-            delivery_fee: 20.0,
-            net_amount: 340.0,
-            payment_method: "online",
-            payment_status: "paid",
-            delivery_notes: "Ring bell twice",
-            estimated_delivery_time: "10 mins",
-            delivery_otp: "7721",
-            created_at: new Date(Date.now() - 1 * 60000).toISOString(),
-            customer: {
-              id: "demo-cust-2",
-              full_name: "Amit Deshmukh",
-              phone: "+91 91234 56789",
-              role: "customer",
-            },
-            address: {
-              name: "Flat 101",
-              building_name: "Sylvan Heights",
-              complete_address: "5th Block, Koramangala, Bengaluru",
-              latitude: 12.9352,
-              longitude: 77.6245,
-            },
-            order_items: [
-              {
-                id: "item-5",
-                order_id: "ord-1043",
-                name: "Organic Hass Avocado - 1 pc",
-                price: 190.0,
-                quantity: 1,
-                image_url: "https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?q=80&w=200",
-              },
-              {
-                id: "item-6",
-                order_id: "ord-1043",
-                name: "Fresh Strawberry Box - 200g",
-                price: 95.0,
-                quantity: 1,
-                image_url: "https://images.unsplash.com/photo-1464965911861-746a04b4bca6?q=80&w=200",
-              },
-            ],
-          },
-          {
-            id: "ord-1040",
-            profile_id: "demo-cust-3",
-            status: "ready_for_pickup",
-            total_amount: 510.0,
-            discount_amount: 20.0,
-            delivery_fee: 20.0,
-            net_amount: 510.0,
-            payment_method: "COD",
-            payment_status: "pending",
-            packer_name: session?.staff_name || "Ramesh (Picker)",
-            delivery_otp: "9102",
-            packed_at: new Date(Date.now() - 12 * 60000).toISOString(),
-            created_at: new Date(Date.now() - 25 * 60000).toISOString(),
-            customer: {
-              id: "demo-cust-3",
-              full_name: "Neha Patel",
-              phone: "+91 99887 76655",
-              role: "customer",
-            },
-            address: {
-              name: "Villa 12",
-              building_name: "Palm Meadows",
-              complete_address: "Whitefield, Bengaluru",
-              latitude: 12.9698,
-              longitude: 77.7499,
-            },
-            order_items: [
-              {
-                id: "item-7",
-                order_id: "ord-1040",
-                name: "Broccoli Florets - 1 pc (300g)",
-                price: 85.0,
-                quantity: 2,
-                image_url: "https://images.unsplash.com/photo-1568584711075-3d021a7c3ecf?q=80&w=200",
-              },
-            ],
-          },
-        ];
-        setOrders(sampleOrders);
+      if (error || !data) {
+        setOrders([]);
       } else {
         setOrders(data as Order[]);
       }
@@ -296,8 +147,9 @@ export default function StaffTerminalPage() {
   // Transition order status
   const updateOrderStatus = async (
     orderId: string,
-    newStatus: "preparing" | "ready_for_pickup"
+    newStatus: "preparing" | "ready_for_pickup" | "out_for_delivery" | "delivered"
   ) => {
+    setUpdatingOrderId(orderId);
     try {
       const supabase = createClient();
       const updates: any = {
@@ -308,7 +160,17 @@ export default function StaffTerminalPage() {
         updates.packed_at = new Date().toISOString();
       }
 
-      await supabase.from("orders").update(updates).eq("id", orderId);
+      const { data, error } = await supabase
+        .from("orders")
+        .update(updates)
+        .eq("id", orderId)
+        .select();
+
+      if (error) {
+        console.error("Database update failed:", error);
+        alert(`Failed to update status in database: ${error.message}`);
+        return;
+      }
 
       // Local state update
       setOrders((prev) =>
@@ -319,11 +181,14 @@ export default function StaffTerminalPage() {
         setSelectedOrder((prev) => (prev ? { ...prev, ...updates } : null));
         if (newStatus === "ready_for_pickup") {
           // Close modal after success
-          setTimeout(() => setSelectedOrder(null), 800);
+          setTimeout(() => setSelectedOrder(null), 600);
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to update status:", err);
+      alert(`Error updating order: ${err?.message || "Unknown error"}`);
+    } finally {
+      setUpdatingOrderId(null);
     }
   };
 
@@ -681,21 +546,45 @@ export default function StaffTerminalPage() {
 
             {/* Modal Footer Actions */}
             <div className="p-4 border-t border-slate-700/80 bg-slate-800/95 space-y-2">
-              {selectedOrder.status !== "ready_for_pickup" && (
+              {selectedOrder.status !== "ready_for_pickup" &&
+              selectedOrder.status !== "out_for_delivery" &&
+              selectedOrder.status !== "delivered" && (
                 <button
+                  disabled={updatingOrderId === selectedOrder.id}
                   onClick={() => updateOrderStatus(selectedOrder.id, "ready_for_pickup")}
-                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition"
+                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold rounded-xl shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition cursor-pointer"
                 >
                   <PackageCheck className="w-5 h-5" />
-                  Mark Order Packed & Ready for Pickup 📦
+                  {updatingOrderId === selectedOrder.id
+                    ? "Updating Database..."
+                    : "Mark Order Packed & Ready for Pickup 📦"}
                 </button>
               )}
-              {selectedOrder.status === "pending" && (
+
+              {(selectedOrder.status === "pending" ||
+                selectedOrder.status === "confirmed" ||
+                (selectedOrder.status as string) === "placed") && (
                 <button
+                  disabled={updatingOrderId === selectedOrder.id}
                   onClick={() => updateOrderStatus(selectedOrder.id, "preparing")}
-                  className="w-full py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-300 font-semibold rounded-xl text-xs transition"
+                  className="w-full py-2.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-slate-200 font-semibold rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
                 >
-                  Accept & Mark In-Progress
+                  {updatingOrderId === selectedOrder.id
+                    ? "Saving..."
+                    : "Accept & Start Packing (In-Progress)"}
+                </button>
+              )}
+
+              {selectedOrder.status === "ready_for_pickup" && (
+                <button
+                  disabled={updatingOrderId === selectedOrder.id}
+                  onClick={() => updateOrderStatus(selectedOrder.id, "out_for_delivery")}
+                  className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 transition cursor-pointer"
+                >
+                  <Bike className="w-5 h-5" />
+                  {updatingOrderId === selectedOrder.id
+                    ? "Updating..."
+                    : "Hand Over to Delivery Rider 🛵 (Out for Delivery)"}
                 </button>
               )}
             </div>

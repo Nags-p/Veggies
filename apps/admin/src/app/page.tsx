@@ -4,7 +4,7 @@ import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { LayoutDashboard, ShoppingBasket, ShoppingCart, Tag, TrendingUp, AlertTriangle, Search, Plus, Edit, Trash2, Check, RefreshCw, Loader2, User, Bell, Settings, Eye, EyeOff, Users } from "lucide-react";
+import { LayoutDashboard, ShoppingBasket, ShoppingCart, Tag, TrendingUp, AlertTriangle, Search, Plus, Edit, Trash2, Check, RefreshCw, Loader2, User, Bell, Settings, Eye, EyeOff, Users, Store } from "lucide-react";
 import Header from "@/components/Header";
 import { createClient } from "@/lib/supabase/client";
 import NotificationManager from "@/components/NotificationManager";
@@ -1155,7 +1155,7 @@ function AdminPanelContent() {
               { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
               { id: "products", label: "Products & Stock", icon: ShoppingBasket },
               { id: "orders", label: "Orders Manager", icon: ShoppingCart },
-              { id: "staff", label: "Store Staff & Fleet", icon: Users },
+              { id: "staff", label: "Stores & Staff", icon: Store },
               { id: "customers", label: "Customers", icon: Users },
               { id: "coupons", label: "Coupons", icon: Tag },
               { id: "notifications", label: "Notifications Center", icon: Bell },
@@ -2336,7 +2336,7 @@ function AdminPanelContent() {
           { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
           { id: "products", label: "Products", icon: ShoppingBasket },
           { id: "orders", label: "Orders", icon: ShoppingCart },
-          { id: "staff", label: "Staff", icon: Users },
+          { id: "staff", label: "Stores", icon: Store },
           { id: "customers", label: "Customers", icon: Users },
           { id: "coupons", label: "Coupons", icon: Tag },
           { id: "notifications", label: "Alerts", icon: Bell },

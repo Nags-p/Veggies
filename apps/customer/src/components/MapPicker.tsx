@@ -5,6 +5,9 @@ import React, { useEffect, useRef, useState } from "react";
 interface MapPickerProps {
   lat: number;
   lon: number;
+  storeLat?: number;
+  storeLon?: number;
+  radiusKm?: number;
   onChange: (
     lat: number,
     lon: number,
@@ -17,10 +20,13 @@ interface MapPickerProps {
   ) => void;
 }
 
-const STORE_LAT = parseFloat(process.env.NEXT_PUBLIC_STORE_LAT || "12.971598");
-const STORE_LON = parseFloat(process.env.NEXT_PUBLIC_STORE_LON || "77.594562");
+const DEFAULT_STORE_LAT = parseFloat(process.env.NEXT_PUBLIC_STORE_LAT || "12.971598");
+const DEFAULT_STORE_LON = parseFloat(process.env.NEXT_PUBLIC_STORE_LON || "77.594562");
 
-export default function MapPicker({ lat, lon, onChange }: MapPickerProps) {
+export default function MapPicker({ lat, lon, storeLat, storeLon, radiusKm, onChange }: MapPickerProps) {
+  const activeStoreLat = storeLat !== undefined ? storeLat : DEFAULT_STORE_LAT;
+  const activeStoreLon = storeLon !== undefined ? storeLon : DEFAULT_STORE_LON;
+  const activeRadiusMeters = (radiusKm || 2.0) * 1000;
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -85,16 +91,16 @@ export default function MapPicker({ lat, lon, onChange }: MapPickerProps) {
       maxZoom: 20
     }).addTo(map);
 
-    // Add 2KM Delivery Circle (emerald green)
-    L.circle([STORE_LAT, STORE_LON], {
+    // Add Delivery Service Circle (emerald green)
+    L.circle([activeStoreLat, activeStoreLon], {
       color: "#10B981", // Emerald-500
       fillColor: "#10B981",
       fillOpacity: 0.1,
-      radius: 2000, // 2 KM
+      radius: activeRadiusMeters, // e.g. 2000 meters for 2 KM
     }).addTo(map);
 
     // Create Draggable Delivery Marker
-    const marker = L.marker([lat || STORE_LAT, lon || STORE_LON], {
+    const marker = L.marker([lat || activeStoreLat, lon || activeStoreLon], {
       draggable: true,
     }).addTo(map);
     markerInstanceRef.current = marker;

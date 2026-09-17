@@ -20,26 +20,10 @@ interface Address {
   is_default: boolean;
 }
 
-const STORE_LAT = parseFloat(process.env.NEXT_PUBLIC_STORE_LAT || "13.0017689");
-const STORE_LON = parseFloat(process.env.NEXT_PUBLIC_STORE_LON || "77.5777957");
-
-// Haversine formula to compute distance in KM
-function getDistanceInKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371; // Earth radius in KM
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
 export default function AddressManager() {
   const router = useRouter();
   const supabase = createClient();
-  const { setSavedLocation } = useLocation();
+  const { setSavedLocation, storeLocation, stores, nearestStore, getDistanceInKm } = useLocation();
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -55,11 +39,12 @@ export default function AddressManager() {
   const [addressLine1, setAddressLine1] = useState("");
   const [addressLine2, setAddressLine2] = useState("");
 
-  const [lat, setLat] = useState<number>(STORE_LAT);
-  const [lon, setLon] = useState<number>(STORE_LON);
+  const [lat, setLat] = useState<number>(storeLocation?.lat || 12.971598);
+  const [lon, setLon] = useState<number>(storeLocation?.lon || 77.594562);
   const [isDefault, setIsDefault] = useState(false);
   
   const [distance, setDistance] = useState(0);
+  const [closestStore, setClosestStore] = useState<any>(nearestStore || storeLocation);
 
   // Check auth and load addresses
   const loadAddresses = async () => {
@@ -105,8 +90,18 @@ export default function AddressManager() {
       setAddressLine2(addressText);
     }
 
-    const dist = getDistanceInKm(STORE_LAT, STORE_LON, newLat, newLon);
-    setDistance(dist);
+    const candidateList = stores && stores.length > 0 ? stores : [storeLocation as any];
+    const res = candidateList
+      .map((s: any) => ({ store: s, d: getDistanceInKm(s.lat, s.lon, newLat, newLon) }))
+      .sort((a: any, b: any) => a.d - b.d)[0];
+
+    if (res) {
+      setClosestStore(res.store);
+      setDistance(res.d);
+    } else {
+      const dist = getDistanceInKm(storeLocation.lat, storeLocation.lon, newLat, newLon);
+      setDistance(dist);
+    }
   };
 
   // Attempt to geolocate customer device
@@ -118,8 +113,19 @@ export default function AddressManager() {
           const currentLon = position.coords.longitude;
           setLat(currentLat);
           setLon(currentLon);
-          const dist = getDistanceInKm(STORE_LAT, STORE_LON, currentLat, currentLon);
-          setDistance(dist);
+          
+          const candidateList = stores && stores.length > 0 ? stores : [storeLocation as any];
+          const res = candidateList
+            .map((s: any) => ({ store: s, d: getDistanceInKm(s.lat, s.lon, currentLat, currentLon) }))
+            .sort((a: any, b: any) => a.d - b.d)[0];
+
+          if (res) {
+            setClosestStore(res.store);
+            setDistance(res.d);
+          } else {
+            const dist = getDistanceInKm(storeLocation.lat, storeLocation.lon, currentLat, currentLon);
+            setDistance(dist);
+          }
         },
         (error) => {
           console.error("Geolocation failed:", error);
@@ -186,7 +192,7 @@ export default function AddressManager() {
     setLon(address.longitude);
     setIsDefault(address.is_default);
 
-    const dist = getDistanceInKm(STORE_LAT, STORE_LON, address.latitude, address.longitude);
+    const dist = getDistanceInKm(storeLocation.lat, storeLocation.lon, address.latitude, address.longitude);
     setDistance(dist);
 
     setShowForm(true);
@@ -260,8 +266,8 @@ export default function AddressManager() {
       setAddressLine1("");
       setAddressLine2("");
       setIsDefault(false);
-      setLat(STORE_LAT);
-      setLon(STORE_LON);
+      setLat(storeLocation?.lat || 12.971598);
+      setLon(storeLocation?.lon || 77.594562);
       setEditingAddressId(null);
       setShowForm(false);
       
@@ -283,7 +289,7 @@ export default function AddressManager() {
     );
   }
 
-  const isWithinServiceArea = distance <= 2.0;
+  const isWithinServiceArea = distance <= (closestStore?.radius_km || storeLocation?.radius_km || 2.0);
 
   return (
     <div className="min-h-screen bg-slate-50/50 pb-24 md:pb-12">
@@ -441,7 +447,14 @@ export default function AddressManager() {
                   </button>
                 </div>
                 <div className="h-60 rounded-xl overflow-hidden border border-slate-100">
-                  <MapPicker lat={lat} lon={lon} onChange={handleMapChange} />
+                  <MapPicker 
+                    lat={lat} 
+                    lon={lon} 
+                    storeLat={closestStore?.lat || storeLocation?.lat}
+                    storeLon={closestStore?.lon || storeLocation?.lon}
+                    radiusKm={closestStore?.radius_km || storeLocation?.radius_km || 2.0}
+                    onChange={handleMapChange} 
+                  />
                 </div>
               </div>
 
@@ -449,8 +462,8 @@ export default function AddressManager() {
               {distance > 0 && (
                 <div className={`p-3.5 rounded-2xl border text-[11px] font-semibold text-left space-y-1 ${
                   isWithinServiceArea 
-                    ? "bg-emerald-50 border-emerald-100 text-emerald-805" 
-                    : "bg-rose-50 border-rose-100 text-rose-805"
+                    ? "bg-emerald-50 border-emerald-100 text-emerald-800" 
+                    : "bg-rose-50 border-rose-100 text-rose-800"
                 }`}>
                   <div className="flex items-center gap-1.5">
                     <span className={`w-2 h-2 rounded-full ${isWithinServiceArea ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
@@ -460,8 +473,8 @@ export default function AddressManager() {
                   </div>
                   <p className="leading-relaxed">
                     {isWithinServiceArea 
-                      ? `This location is approx. ${distance.toFixed(2)} KM from our store. Delivery is active!` 
-                      : `This location is ${distance.toFixed(2)} KM from our store. We only deliver within 2.0 KM of Malleshwaram.`
+                      ? `This location is approx. ${distance.toFixed(2)} KM from ${closestStore?.name || storeLocation?.name || "our store"}. Delivery is active!` 
+                      : `This location is ${distance.toFixed(2)} KM from our nearest branch (${closestStore?.name || storeLocation?.name || "our store"}). We only deliver within ${closestStore?.radius_km || 2.0} KM.`
                     }
                   </p>
                 </div>

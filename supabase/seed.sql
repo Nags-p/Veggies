@@ -54,3 +54,18 @@ insert into public.coupons (id, code, discount_type, discount_value, min_order_v
 insert into public.store_staff_codes (id, store_name, access_code, is_active) values
 ('e1111111-1111-1111-1111-111111111111', 'Veggies Flagship Store (Indiranagar)', '492810', true),
 ('e2222222-2222-2222-2222-222222222222', 'Veggies Express Store (Koramangala)', '773901', true);
+
+-- Insert Default Stores (Physical Branches)
+insert into public.stores (id, name, address, lat, lon, radius_km, phone, staff_code, is_active) values
+('f1111111-1111-1111-1111-111111111111', 'Veggies Flagship Store (Indiranagar)', '12th Cross, Indiranagar, Bengaluru', 12.9784, 77.6408, 2.0, '+91 98765 43210', '492810', true),
+('f2222222-2222-2222-2222-222222222222', 'Veggies Express Store (Koramangala)', '5th Block, Koramangala, Bengaluru', 12.9352, 77.6245, 2.0, '+91 98765 43211', '773901', true)
+on conflict (id) do nothing;
+
+-- Insert Default Store Settings & Location with 2KM delivery radius
+insert into public.store_settings (key, value) values
+('store_status', '{"is_open": true}'::jsonb),
+('store_timings', '{"open_time": "08:00", "close_time": "22:00", "days": "Mon - Sun"}'::jsonb),
+('store_location', '{"name": "Veggies Flagship Store (Indiranagar)", "address": "12th Cross, Indiranagar, Bengaluru", "lat": 12.9784, "lon": 77.6408, "radius_km": 2.0, "phone": "+91 98765 43210"}'::jsonb),
+('stores_list', '[{"id": "f1111111-1111-1111-1111-111111111111", "name": "Veggies Flagship Store (Indiranagar)", "address": "12th Cross, Indiranagar, Bengaluru", "lat": 12.9784, "lon": 77.6408, "radius_km": 2.0, "phone": "+91 98765 43210", "staff_code": "492810", "is_active": true}, {"id": "f2222222-2222-2222-2222-222222222222", "name": "Veggies Express Store (Koramangala)", "address": "5th Block, Koramangala, Bengaluru", "lat": 12.9352, "lon": 77.6245, "radius_km": 2.0, "phone": "+91 98765 43211", "staff_code": "773901", "is_active": true}]'::jsonb)
+on conflict (key) do nothing;
+
