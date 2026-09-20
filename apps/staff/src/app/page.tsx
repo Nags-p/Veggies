@@ -496,7 +496,7 @@ export default function StaffTerminalPage() {
   const packingCount = orders.filter((o) => o.status === "preparing").length;
   const readyCount = orders.filter((o) => o.status === "ready_for_pickup").length;
   const dispatchedCount = orders.filter((o) =>
-    ["out_for_delivery", "arrived", "delivered", "cancelled"].includes(o.status)
+    ["out_for_delivery", "arrived", "delivered", "cancelled", "instore"].includes(o.status)
   ).length;
 
   // Filter orders by active tab
@@ -519,7 +519,7 @@ export default function StaffTerminalPage() {
       return o.status === "ready_for_pickup";
     }
     if (activeTab === "dispatched") {
-      return ["out_for_delivery", "arrived", "delivered", "cancelled"].includes(o.status);
+      return ["out_for_delivery", "arrived", "delivered", "cancelled", "instore"].includes(o.status);
     }
     return true;
   });
@@ -822,7 +822,7 @@ export default function StaffTerminalPage() {
               const isPacking = order.status === "preparing";
               const isReady = order.status === "ready_for_pickup";
               const isCancelled = order.status === "cancelled";
-              const isDelivered = order.status === "delivered";
+              const isDelivered = order.status === "delivered" || order.status === "instore";
 
               return (
                 <div
@@ -858,7 +858,7 @@ export default function StaffTerminalPage() {
                             : "bg-slate-700 text-slate-300"
                         }`}
                       >
-                        {isNew ? "Awaiting Acceptance" : order.status.replace(/_/g, " ")}
+                        {isNew ? "Awaiting Acceptance" : (order.status === "instore" ? "In-Store" : order.status.replace(/_/g, " "))}
                       </span>
                     </div>
 
@@ -1255,14 +1255,24 @@ export default function StaffTerminalPage() {
                 {/* Status banner */}
                 <div
                   className={`px-4 py-3 border-b flex items-center gap-2.5 text-xs font-semibold ${
-                    selectedOrder.status === "delivered"
+                    selectedOrder.status === "delivered" || selectedOrder.status === "instore"
                       ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-300"
                       : selectedOrder.status === "cancelled"
                       ? "bg-red-500/15 border-red-500/30 text-red-300"
                       : "bg-blue-500/15 border-blue-500/30 text-blue-300"
                   }`}
                 >
-                  {selectedOrder.status === "delivered" ? (
+                  {selectedOrder.status === "instore" ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                      <div>
+                        <p className="font-bold">In-Store Counter Purchase</p>
+                        <p className="text-[11px] text-emerald-400/80">
+                          Billed & Completed at Physical POS Counter
+                        </p>
+                      </div>
+                    </>
+                  ) : selectedOrder.status === "delivered" ? (
                     <>
                       <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
                       <div>

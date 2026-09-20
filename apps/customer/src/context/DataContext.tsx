@@ -34,6 +34,9 @@ interface Order {
   delivery_notes: string | null;
   order_items: any[];
   cancel_reason?: string | null;
+  order_source?: string;
+  store_id?: string;
+  customer_phone?: string;
 }
 
 interface Profile {
@@ -228,11 +231,27 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const { data } = await supabase
+      // Fetch user profile to check matching customer phone
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("phone")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      const userPhone = profile?.phone || user.phone;
+      const cleanPhone = userPhone ? userPhone.replace(/[^0-9]/g, "").slice(-10) : null;
+
+      let query = supabase
         .from("orders")
-        .select("*, order_items(*, products(weight)), addresses(*)")
-        .eq("profile_id", user.id)
-        .order("created_at", { ascending: false });
+        .select("*, order_items(*, products(weight)), addresses(*)");
+
+      if (cleanPhone) {
+        query = query.or(`profile_id.eq.${user.id},customer_phone.ilike.%${cleanPhone}%`);
+      } else {
+        query = query.eq("profile_id", user.id);
+      }
+
+      const { data } = await query.order("created_at", { ascending: false });
 
       if (data) {
         const mappedOrders = data.map((o: any) => {
@@ -255,12 +274,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             }),
             items: itemsStr,
             total: parseFloat(o.net_amount),
-            status: o.status,
+            status: (o.order_source === "pos" || o.status === "instore") ? "instore" : o.status,
             payment_method: o.payment_method,
             payment_status: o.payment_status,
             address: o.addresses 
               ? `${o.addresses.building_name}, ${o.addresses.complete_address}`
-              : "Saved Address",
+              : (o.order_source === "pos" ? (o.delivery_notes || "Veggies Store Malleswaram (In-Store Purchase)") : "Saved Address"),
+            order_source: o.order_source || (o.delivery_notes?.includes("Store") ? "pos" : "online"),
+            store_id: o.store_id,
+            customer_phone: o.customer_phone,
             discount_amount: parseFloat(o.discount_amount),
             delivery_fee: parseFloat(o.delivery_fee),
             total_amount: parseFloat(o.total_amount),

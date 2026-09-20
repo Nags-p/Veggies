@@ -20,7 +20,9 @@
     "start:customer": "npm run start --workspace=apps/customer",
     "start:admin": "npm run start --workspace=apps/admin",
     "start:staff": "npm run start --workspace=apps/staff",
-    "start:delivery": "npm run start --workspace=apps/delivery"
+    "start:delivery": "npm run start --workspace=apps/delivery",
+    "start:pos": "py apps/pos-desktop/main.py",
+    "test:pos": "py -m unittest apps/pos-desktop/tests/test_pos_engine.py"
   },
   "dependencies": {
     "@supabase/ssr": "^0.3.0",

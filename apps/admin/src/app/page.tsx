@@ -55,6 +55,9 @@ interface AdminOrder {
   delivery_notes?: string | null;
   order_items?: any[];
   cancel_reason?: string | null;
+  order_source?: string;
+  store_id?: string;
+  customer_phone?: string;
 }
 
 interface AdminCoupon {
@@ -302,6 +305,14 @@ function AdminPanelContent() {
   };
 
   const resolveStoreName = (o: any, availableStores: any[]) => {
+    if (o.store_id && availableStores && availableStores.length > 0) {
+      const match = availableStores.find((st: any) => st.id === o.store_id);
+      if (match?.name) return match.name;
+    }
+    if (o.delivery_notes && o.delivery_notes.toLowerCase().includes("store")) {
+      const parts = o.delivery_notes.split("•");
+      return parts[0].trim();
+    }
     if (o.packer_name && o.packer_name.includes("(") && o.packer_name.includes(")")) {
       const match = o.packer_name.match(/\(([^)]+)\)/);
       if (match && match[1]) return match[1];
@@ -345,14 +356,19 @@ function AdminPanelContent() {
             id: o.id.slice(0, 8).toUpperCase(),
             db_id: o.id,
             profile_id: o.profile_id,
-            customer: o.profiles?.full_name || o.profiles?.phone || "Anonymous",
-            phone: o.profiles?.phone || "",
-            address: o.addresses ? `${o.addresses.building_name}, ${o.addresses.complete_address}` : "Saved Address",
+            customer: o.profiles?.full_name 
+              ? `${o.profiles.full_name}${o.customer_phone ? ` (${o.customer_phone})` : ""}`
+              : (o.customer_phone ? `Customer (${o.customer_phone})` : (o.order_source === "pos" ? "In-Store Walk-in Customer" : "Anonymous")),
+            phone: o.customer_phone || o.profiles?.phone || "",
+            address: o.addresses 
+              ? `${o.addresses.building_name}, ${o.addresses.complete_address}` 
+              : (o.order_source === "pos" ? (o.delivery_notes || "Veggies Store Malleswaram (In-Store POS)") : "Saved Address"),
             lat: o.addresses?.latitude || null,
             lon: o.addresses?.longitude || null,
             store_name: resolveStoreName(o, storesList),
+            order_source: o.order_source || (o.delivery_notes?.includes("POS") ? "pos" : "online"),
             total: parseFloat(o.net_amount),
-            status: o.status,
+            status: (o.order_source === "pos" || o.status === "instore") ? "instore" : o.status,
             payment_method: o.payment_method || "COD",
             payment_status: o.payment_status || "pending",
             discount_amount: parseFloat(o.discount_amount) || 0,
@@ -473,14 +489,19 @@ function AdminPanelContent() {
           id: o.id.slice(0, 8).toUpperCase(), // readable order ID snippet
           db_id: o.id, // actual UUID for updates
           profile_id: o.profile_id,
-          customer: o.profiles?.full_name || o.profiles?.phone || "Anonymous",
-          phone: o.profiles?.phone || "",
-          address: o.addresses ? `${o.addresses.building_name}, ${o.addresses.complete_address}` : "Saved Address",
+          customer: o.profiles?.full_name 
+            ? `${o.profiles.full_name}${o.customer_phone ? ` (${o.customer_phone})` : ""}`
+            : (o.customer_phone ? `Customer (${o.customer_phone})` : (o.order_source === "pos" ? "In-Store Walk-in Customer" : "Anonymous")),
+          phone: o.customer_phone || o.profiles?.phone || "",
+          address: o.addresses 
+            ? `${o.addresses.building_name}, ${o.addresses.complete_address}` 
+            : (o.order_source === "pos" ? (o.delivery_notes || "Veggies Store Malleswaram (In-Store POS)") : "Saved Address"),
           lat: o.addresses?.latitude || null,
           lon: o.addresses?.longitude || null,
           store_name: resolveStoreName(o, activeStores),
+          order_source: o.order_source || (o.delivery_notes?.includes("POS") ? "pos" : "online"),
           total: parseFloat(o.net_amount),
-          status: o.status,
+          status: (o.order_source === "pos" || o.status === "instore") ? "instore" : o.status,
           payment_method: o.payment_method || "COD",
           payment_status: o.payment_status || "pending",
           discount_amount: parseFloat(o.discount_amount) || 0,
@@ -538,7 +559,7 @@ function AdminPanelContent() {
         if (profiles) {
           const customerList = profiles.map((p: any) => {
             const customerOrders = allOrders ? allOrders.filter((o: any) => o.profile_id === p.id) : [];
-            const completedOrders = customerOrders.filter((o: any) => o.status === "delivered");
+            const completedOrders = customerOrders.filter((o: any) => o.status === "delivered" || o.status === "instore");
             const totalSpent = completedOrders.reduce((sum: number, o: any) => sum + parseFloat(o.net_amount), 0);
             const orderCount = customerOrders.length;
             const aov = completedOrders.length > 0 ? totalSpent / completedOrders.length : 0;
@@ -1068,7 +1089,7 @@ function AdminPanelContent() {
   // Dynamic Live Metrics
   const lowStockCount = products.filter((p) => p.stock <= 5).length;
   const pendingOrdersCount = orders.filter((o) => o.status === "pending" || o.status === "confirmed" || o.status === "preparing" || o.status === "out_for_delivery").length;
-  const totalRevenueSum = orders.filter((o) => o.status === "delivered").reduce((sum, o) => sum + o.total, 0);
+  const totalRevenueSum = orders.filter((o) => o.status === "delivered" || o.status === "instore").reduce((sum, o) => sum + o.total, 0);
 
   if (authLoading) {
     return (
@@ -1690,7 +1711,14 @@ function AdminPanelContent() {
                                     className="hover:bg-slate-50/50 cursor-pointer transition-colors"
                                   >
                                     <td className="p-4 font-extrabold text-slate-900">
-                                      #{o.id}
+                                      <div className="flex items-center gap-1.5">
+                                        <span>#{o.id}</span>
+                                        {o.order_source === "pos" && (
+                                          <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                            POS Counter
+                                          </span>
+                                        )}
+                                      </div>
                                       <span className="text-[9px] text-slate-400 font-bold block pt-0.5">
                                         {o.payment_method?.toUpperCase()}
                                       </span>
@@ -1709,10 +1737,11 @@ function AdminPanelContent() {
                                     <td className="p-4 text-slate-900 font-extrabold">₹{o.total.toFixed(2)}</td>
                                     <td className="p-4">
                                       <span className={`inline-block text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wider ${
+                                        o.status === "instore" || o.order_source === "pos" ? "bg-emerald-100 text-emerald-800 border border-emerald-200" :
                                         o.status === "delivered" ? "bg-green-50 text-green-600 border border-green-100" :
                                         "bg-red-50 text-red-600 border border-red-100"
                                       }`}>
-                                        {o.status}
+                                        {o.status === "instore" || o.order_source === "pos" ? "In-Store" : o.status}
                                       </span>
                                       {o.status === "cancelled" && o.cancel_reason && (
                                         <span className="block text-[9px] text-red-500 font-medium truncate max-w-[140px] mt-0.5">
@@ -1760,7 +1789,14 @@ function AdminPanelContent() {
                             >
                               <div className="flex justify-between items-center border-b border-slate-50 pb-2">
                                 <div>
-                                  <span className="font-extrabold text-slate-900 text-sm">#{o.id}</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-extrabold text-slate-900 text-sm">#{o.id}</span>
+                                    {o.order_source === "pos" && (
+                                      <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                        POS Counter
+                                      </span>
+                                    )}
+                                  </div>
                                   <p className="text-[10px] text-slate-400 font-bold">{o.date} | {o.payment_method?.toUpperCase()}</p>
                                 </div>
                                 <div className="text-right">
@@ -1775,10 +1811,11 @@ function AdminPanelContent() {
                                   {o.store_name || "Main Store"}
                                 </span>
                                 <span className={`inline-block text-[9px] font-extrabold px-2 py-0.5 rounded uppercase tracking-wider ${
+                                  o.status === "instore" || o.order_source === "pos" ? "bg-emerald-100 text-emerald-800 border border-emerald-200" :
                                   o.status === "delivered" ? "bg-green-50 text-green-600 border border-green-100" :
                                   "bg-red-50 text-red-600 border border-red-100"
                                 }`}>
-                                  {o.status}
+                                  {o.status === "instore" || o.order_source === "pos" ? "In-Store" : o.status}
                                 </span>
                               </div>
 
@@ -2273,11 +2310,12 @@ function AdminPanelContent() {
                                         <td className="py-2 px-3 text-slate-500">{o.date.split(",")[0]}</td>
                                         <td className="py-2 px-3">
                                           <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
+                                            o.status === "instore" || o.order_source === "pos" ? "bg-emerald-100 text-emerald-800 border border-emerald-200" :
                                             o.status === "delivered" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
                                             o.status === "cancelled" ? "bg-red-50 text-red-650 border border-red-100" :
                                             "bg-amber-50 text-amber-600 border border-amber-100"
                                           }`}>
-                                            {o.status}
+                                            {o.status === "instore" || o.order_source === "pos" ? "In-Store" : o.status}
                                           </span>
                                         </td>
                                         <td className="py-2 px-3 font-bold text-slate-850">₹{o.total}</td>
@@ -2691,11 +2729,12 @@ function AdminPanelContent() {
                   <div className="text-right">
                     <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Status</span>
                     <span className={`inline-block text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase mt-1 ${
+                      selectedOrder.status === "instore" || selectedOrder.order_source === "pos" ? "bg-emerald-100 text-emerald-800 border border-emerald-200" :
                       selectedOrder.status === "delivered" ? "bg-green-50 text-green-600 border border-green-100" :
                       selectedOrder.status === "cancelled" ? "bg-red-50 text-red-600 border border-red-100" :
                       "bg-blue-50 text-blue-600 border border-blue-100"
                     }`}>
-                      {selectedOrder.status}
+                      {selectedOrder.status === "instore" || selectedOrder.order_source === "pos" ? "In-Store" : selectedOrder.status}
                     </span>
                     {selectedOrder.status === "cancelled" && selectedOrder.cancel_reason && (
                       <span className="block text-[10px] font-bold text-red-500 mt-1">
@@ -2718,7 +2757,7 @@ function AdminPanelContent() {
                       )}
                     </div>
                     <p className="text-slate-500 font-medium leading-relaxed">
-                      📍 {selectedOrder.address}
+                      {selectedOrder.order_source === "pos" ? "🏪 Store / Counter:" : "📍 Delivery Address:"} {selectedOrder.address}
                     </p>
                     {selectedOrder.lat && selectedOrder.lon && (
                       <a

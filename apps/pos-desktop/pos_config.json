@@ -1,0 +1,36 @@
+{
+    "store": {
+        "name": "Veggies Store Malleswaram",
+        "tagline": "Fresh Organics & Daily Veggies \u2022 Malleswaram Branch",
+        "address": "11th B Cross Road, Lower Palace Orchard, Guttahalli, Malleswaram, Bengaluru 560003",
+        "phone": "+91 98765 43210",
+        "gstin": "29ABCDE1234F1Z5",
+        "upi_id": "8050103865@upi",
+        "currency_symbol": "\u20b9",
+        "receipt_footer": "Thank you for supporting local farmers! Visit again."
+    },
+    "hardware": {
+        "scale_enabled": true,
+        "scale_simulator": true,
+        "scale_port": "COM3",
+        "scale_baudrate": 38400,
+        "scale_databits": 8,
+        "scale_parity": "N",
+        "scale_stopbits": 1,
+        "scale_timeout": 1.0,
+        "printer_enabled": true,
+        "printer_type": "network",
+        "printer_paper_width": "58mm",
+        "printer_ip": "192.168.1.200",
+        "printer_port": 9100,
+        "printer_usb_vendor": "0x0416",
+        "printer_usb_product": "0x5011",
+        "cash_drawer_enabled": true
+    },
+    "sync": {
+        "supabase_url": "https://zuoqvvyiklcltacmgojz.supabase.co",
+        "supabase_anon_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1b3F2dnlpa2xjbHRhY21nb2p6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NzQwMzMsImV4cCI6MjA5NjE1MDAzM30.Av9H6ZTVXvy6YyxCAhyaI9xffHsPlNo_Q0R3Y7DCmcw",
+        "auto_sync_interval_seconds": 30,
+        "store_id": "f1111111-1111-1111-1111-111111111111"
+    }
+}

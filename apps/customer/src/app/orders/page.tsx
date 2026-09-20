@@ -27,6 +27,9 @@ interface Order {
   delivery_notes: string | null;
   order_items: any[];
   cancel_reason?: string | null;
+  order_source?: string;
+  store_id?: string;
+  customer_phone?: string;
 }
 
 function OrdersPageContent() {
@@ -47,7 +50,7 @@ function OrdersPageContent() {
   useEffect(() => {
     if (dbOrders && dbOrders.length > 0) {
       const latest = dbOrders[0];
-      if (latest && latest.status !== "delivered" && latest.status !== "cancelled") {
+      if (latest && latest.status !== "delivered" && latest.status !== "cancelled" && latest.status !== "instore" && latest.order_source !== "pos") {
         setActiveOrder(latest);
         
         const statusMap: Record<string, number> = {
@@ -183,14 +186,14 @@ function OrdersPageContent() {
 
             setActiveOrder((prevActive: any) => {
               if (prevActive && prevActive.id === updatedOrder.id) {
-                if (updatedOrder.status === "delivered" || updatedOrder.status === "cancelled") {
+                if (updatedOrder.status === "delivered" || updatedOrder.status === "cancelled" || updatedOrder.status === "instore") {
                   return null;
                 }
                 const step = statusMap[updatedOrder.status] ?? 0;
                 setTimelineStep(step);
                 return { ...prevActive, status: updatedOrder.status };
               }
-              if (!prevActive && updatedOrder.status !== "delivered" && updatedOrder.status !== "cancelled") {
+              if (!prevActive && updatedOrder.status !== "delivered" && updatedOrder.status !== "cancelled" && updatedOrder.status !== "instore") {
                 const found = dbOrdersRef.current.find(o => o.id === updatedOrder.id);
                 if (found) {
                   const step = statusMap[updatedOrder.status] ?? 0;
@@ -332,12 +335,18 @@ function OrdersPageContent() {
                   <div className="space-y-1.5 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-extrabold text-slate-800">{ord.displayId}</span>
-                      <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded uppercase ${
-                        ord.status === "delivered" ? "bg-emerald-50 text-emerald-600" :
-                        ord.status === "cancelled" ? "bg-red-50 text-red-600" : "bg-slate-100 text-slate-500"
-                      }`}>
-                        {ord.status}
-                      </span>
+                      {ord.order_source === "pos" || ord.status === "instore" ? (
+                        <span className="text-[9px] font-black px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-wide">
+                          In-Store
+                        </span>
+                      ) : (
+                        <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded uppercase ${
+                          ord.status === "delivered" ? "bg-emerald-50 text-emerald-600" :
+                          ord.status === "cancelled" ? "bg-red-50 text-red-600" : "bg-slate-100 text-slate-500"
+                        }`}>
+                          {ord.status}
+                        </span>
+                      )}
                     </div>
                     <p className="text-[10px] text-slate-400 font-bold">{ord.date}</p>
                     <p className="text-xs text-slate-555 font-medium truncate max-w-[350px]">
@@ -402,11 +411,12 @@ function OrdersPageContent() {
                   <div className="text-right">
                     <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Status</span>
                     <span className={`inline-block text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase mt-1 ${
+                      selectedOrder.order_source === "pos" || selectedOrder.status === "instore" ? "bg-emerald-100 text-emerald-800 border border-emerald-200" :
                       selectedOrder.status === "delivered" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
                       selectedOrder.status === "cancelled" ? "bg-red-50 text-red-600 border border-red-100" :
                       "bg-blue-50 text-blue-600 border border-blue-100 animate-pulse"
                     }`}>
-                      {selectedOrder.status}
+                      {selectedOrder.order_source === "pos" || selectedOrder.status === "instore" ? "In-Store" : selectedOrder.status}
                     </span>
                     {selectedOrder.status === "cancelled" && selectedOrder.cancel_reason && (
                       <span className="block text-[10px] font-bold text-red-500 mt-1">
@@ -481,17 +491,17 @@ function OrdersPageContent() {
                 <div className="space-y-3.5">
                   <div className="space-y-1.5">
                     <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
-                      Delivery Address
+                      {selectedOrder.order_source === "pos" ? "Store Purchase Location" : "Delivery Address"}
                     </h4>
                     <p className="font-bold text-slate-600 leading-relaxed bg-slate-50/50 p-3.5 rounded-xl border border-slate-100">
-                      {selectedOrder.address}
+                      {selectedOrder.order_source === "pos" ? "🏪 " : "📍 "}{selectedOrder.address}
                     </p>
                   </div>
 
                   {selectedOrder.delivery_notes && (
                     <div className="space-y-1.5">
                       <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
-                        Delivery Notes
+                        {selectedOrder.order_source === "pos" ? "Store Billing Note" : "Delivery Notes"}
                       </h4>
                       <p className="italic text-slate-500 font-semibold bg-amber-50/30 border border-amber-100/50 p-3 rounded-xl">
                         "{selectedOrder.delivery_notes}"

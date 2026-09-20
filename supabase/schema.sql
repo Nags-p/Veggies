@@ -113,7 +113,7 @@ create table public.orders (
     id uuid default gen_random_uuid() primary key,
     profile_id uuid references public.profiles(id) on delete set null not null,
     address_id uuid references public.addresses(id) on delete set null,
-    status text not null default 'pending' check (status in ('pending', 'confirmed', 'preparing', 'ready_for_pickup', 'out_for_delivery', 'arrived', 'delivered', 'cancelled')),
+    status text not null default 'pending' check (status in ('pending', 'confirmed', 'preparing', 'ready_for_pickup', 'out_for_delivery', 'arrived', 'delivered', 'cancelled', 'instore')),
     total_amount numeric(10, 2) not null check (total_amount >= 0),
     discount_amount numeric(10, 2) default 0.00 not null check (discount_amount >= 0),
     delivery_fee numeric(10, 2) default 20.00 not null check (delivery_fee >= 0),

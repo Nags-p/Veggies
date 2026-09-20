@@ -11,6 +11,8 @@
 - [x] Phase 8: Checkout System (Address validation, Coupons, Order calculations)
 - [x] Phase 9: Order Management & Notifications (Order tracing, notifications tray)
 - [x] Phase 10: Admin Panel (CRUD dashboards, inventory, orders management)
+- [x] Phase 11: Multi-App Role Ecosystem (Customer, Admin, Staff, Delivery)
+- [x] Phase 12: In-Store POS & Billing Software (Offline SQLite, RS-232 Scale, ESC/POS Thermal Printing, Supabase Sync)
 
 ## Capacitor Mobile App Integration
 - [x] Capacitor installation & configuration (`capacitor.config.json`)

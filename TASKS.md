@@ -69,3 +69,15 @@
 - [x] Built dedicated Delivery Partner App (`apps/delivery`) with duty toggle, Google Maps intent, and Customer OTP & COD cash verification
 - [x] Added Store Staff Access Code Manager and Delivery Fleet COD Cash Reconciliation to Owner Web Admin (`apps/admin`)
 - [x] Updated Customer App tracking (`apps/customer`) to display the 4-digit Delivery OTP and 6-stage delivery pipeline
+
+## Phase 12: In-Store POS & Physical Counter Billing Software (Completed)
+- [x] Created `apps/pos-desktop` standalone Python/PyQt6 desktop application
+- [x] Built offline-first SQLite database schema with WAL mode (`pos_data.db`) and seed catalog of 22 vegetables/fruits with pre-assigned PLU codes
+- [x] Implemented RS-232 / USB digital weighing scale driver (`ScaleReader`) with continuous stream ASCII string parser
+- [x] Created built-in Virtual Scale Simulator (`ScaleSimulator`) with preset weight triggers (+100g, +250g, +500g, +1kg) for offline dev testing
+- [x] Implemented ESC/POS thermal receipt formatting for 58mm (2-inch) and 80mm (3-inch) paper, cash drawer kick pulse, and dynamic UPI QR code generator
+- [x] Created Virtual Thermal Paper Preview modal (`VirtualReceiptDialog`) for on-screen receipt inspection without paper waste
+- [x] Built modern cashier UX with rapid PLU search, touch category grid, keyboard shortcuts (F1-F12), Hold & Recall carts, and cash change calculator
+- [x] Built background Supabase 2-way cloud synchronization thread (`SyncWorker`) pushing offline bills to `orders` and pulling live rates from `products`
+- [x] Added comprehensive unit test suite (`test_pos_engine.py`) and setup documentation (`README.md`)
+
