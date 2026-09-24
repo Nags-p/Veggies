@@ -91,6 +91,7 @@ function AdminPanelContent() {
 
   // Order management states (Completed orders only, filtered store-wise)
   const [selectedStoreFilter, setSelectedStoreFilter] = useState<string>("all");
+  const [selectedChannelFilter, setSelectedChannelFilter] = useState<"all" | "pos" | "online">("all");
   const [storesList, setStoresList] = useState<any[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
   const [refreshingOrders, setRefreshingOrders] = useState(false);
@@ -309,8 +310,12 @@ function AdminPanelContent() {
       const match = availableStores.find((st: any) => st.id === o.store_id);
       if (match?.name) return match.name;
     }
-    if (o.delivery_notes && o.delivery_notes.toLowerCase().includes("store")) {
+    if (o.delivery_notes && o.delivery_notes.includes("•")) {
       const parts = o.delivery_notes.split("•");
+      if (parts.length > 1) {
+        const branchPart = parts[1].split("(")[0].trim();
+        if (branchPart) return branchPart;
+      }
       return parts[0].trim();
     }
     if (o.packer_name && o.packer_name.includes("(") && o.packer_name.includes(")")) {
@@ -1570,14 +1575,22 @@ function AdminPanelContent() {
                       new Set([
                         ...storesList.map((s: any) => s.name),
                         ...orders
-                          .filter((o) => ["delivered", "cancelled"].includes(o.status))
+                          .filter((o) => ["delivered", "cancelled", "instore"].includes(o.status))
                           .map((o) => o.store_name || "Main Store"),
                       ])
                     ).filter(Boolean);
 
                     const completedOrders = orders.filter((o) => {
-                      const isCompleted = ["delivered", "cancelled"].includes(o.status);
+                      const isCompleted = ["delivered", "cancelled", "instore"].includes(o.status);
                       if (!isCompleted) return false;
+
+                      const isPos = o.order_source === "pos" || o.status === "instore";
+                      const matchesChannel =
+                        selectedChannelFilter === "all" ||
+                        (selectedChannelFilter === "pos" && isPos) ||
+                        (selectedChannelFilter === "online" && !isPos);
+
+                      if (!matchesChannel) return false;
 
                       const query = orderSearch.toLowerCase().trim();
                       const matchesSearch =
@@ -1605,9 +1618,9 @@ function AdminPanelContent() {
                                 <CheckCircle2 className="h-5 w-5" />
                               </div>
                               <div>
-                                <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">Completed Orders</h2>
+                                <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">Completed & In-Store Orders</h2>
                                 <p className="text-[11px] font-bold text-slate-400 mt-0.5">
-                                  Store-wise record of delivered and cancelled customer orders ({orders.filter(o => ["delivered", "cancelled"].includes(o.status)).length} total)
+                                  Store-wise record of delivered, in-store POS, and completed orders ({orders.filter(o => ["delivered", "cancelled", "instore"].includes(o.status)).length} total)
                                 </p>
                               </div>
                             </div>
@@ -1640,6 +1653,55 @@ function AdminPanelContent() {
                             </div>
                           </div>
 
+                          {/* Channel Filters: All / In-Store POS / Online Delivery */}
+                          <div className="flex items-center gap-1.5 overflow-x-auto pt-2 border-t border-slate-100 scrollbar-none">
+                            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mr-1 flex items-center gap-1 flex-shrink-0">
+                              Channel:
+                            </span>
+
+                            <button
+                              onClick={() => setSelectedChannelFilter("all")}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 flex-shrink-0 ${
+                                selectedChannelFilter === "all"
+                                  ? "bg-slate-900 text-white shadow-sm"
+                                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                              }`}
+                            >
+                              <span>All Channels</span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${selectedChannelFilter === "all" ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"}`}>
+                                {orders.filter(o => ["delivered", "cancelled", "instore"].includes(o.status)).length}
+                              </span>
+                            </button>
+
+                            <button
+                              onClick={() => setSelectedChannelFilter("pos")}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 flex-shrink-0 ${
+                                selectedChannelFilter === "pos"
+                                  ? "bg-emerald-600 text-white shadow-sm"
+                                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                              }`}
+                            >
+                              <span>In-Store (POS)</span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${selectedChannelFilter === "pos" ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"}`}>
+                                {orders.filter(o => o.order_source === "pos" || o.status === "instore").length}
+                              </span>
+                            </button>
+
+                            <button
+                              onClick={() => setSelectedChannelFilter("online")}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 flex-shrink-0 ${
+                                selectedChannelFilter === "online"
+                                  ? "bg-blue-600 text-white shadow-sm"
+                                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                              }`}
+                            >
+                              <span>Online Delivery</span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${selectedChannelFilter === "online" ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"}`}>
+                                {orders.filter(o => ["delivered", "cancelled"].includes(o.status) && o.order_source !== "pos").length}
+                              </span>
+                            </button>
+                          </div>
+
                           {/* Store Pills Switcher */}
                           <div className="flex items-center gap-1.5 overflow-x-auto pt-2 border-t border-slate-100 scrollbar-none">
                             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mr-1 flex items-center gap-1 flex-shrink-0">
@@ -1657,14 +1719,14 @@ function AdminPanelContent() {
                             >
                               <span>All Stores</span>
                               <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${selectedStoreFilter === "all" ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"}`}>
-                                {orders.filter(o => ["delivered", "cancelled"].includes(o.status)).length}
+                                {orders.filter(o => ["delivered", "cancelled", "instore"].includes(o.status)).length}
                               </span>
                             </button>
 
                             {availableStoreNames.map((storeName) => {
                               const count = orders.filter(
                                 (o) =>
-                                  ["delivered", "cancelled"].includes(o.status) &&
+                                  ["delivered", "cancelled", "instore"].includes(o.status) &&
                                   (o.store_name === storeName || (!o.store_name && storeName === "Main Store"))
                               ).length;
 
@@ -1769,11 +1831,11 @@ function AdminPanelContent() {
                           {completedOrders.length === 0 && (
                             <div className="flex flex-col items-center justify-center py-16 text-center">
                               <CheckCircle2 className="h-12 w-12 text-slate-200 mb-4" />
-                              <h3 className="text-sm font-extrabold text-slate-400">No completed orders found</h3>
+                              <h3 className="text-sm font-extrabold text-slate-400">No orders found</h3>
                               <p className="text-xs text-slate-300 mt-1">
                                 {selectedStoreFilter !== "all"
-                                  ? `No delivered or cancelled orders recorded for "${selectedStoreFilter}"`
-                                  : "Completed customer orders will appear here automatically"}
+                                  ? `No completed or in-store orders recorded for "${selectedStoreFilter}"`
+                                  : "In-store and online customer orders will appear here automatically"}
                               </p>
                             </div>
                           )}
@@ -1843,11 +1905,11 @@ function AdminPanelContent() {
                           {completedOrders.length === 0 && (
                             <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-xl border border-slate-100">
                               <CheckCircle2 className="h-12 w-12 text-slate-200 mb-4" />
-                              <h3 className="text-sm font-extrabold text-slate-400">No completed orders found</h3>
+                              <h3 className="text-sm font-extrabold text-slate-400">No orders found</h3>
                               <p className="text-xs text-slate-300 mt-1">
                                 {selectedStoreFilter !== "all"
                                   ? `No orders for "${selectedStoreFilter}"`
-                                  : "Completed orders will appear here automatically"}
+                                  : "In-store and online orders will appear here automatically"}
                               </p>
                             </div>
                           )}

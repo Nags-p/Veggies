@@ -22,6 +22,7 @@
     "start:staff": "npm run start --workspace=apps/staff",
     "start:delivery": "npm run start --workspace=apps/delivery",
     "start:pos": "py apps/pos-desktop/main.py",
+    "dev:pos-desktop": "py apps/pos-desktop/main.py",
     "test:pos": "py -m unittest apps/pos-desktop/tests/test_pos_engine.py"
   },
   "dependencies": {

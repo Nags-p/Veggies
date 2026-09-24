@@ -60,6 +60,13 @@ class SupabaseSyncService:
             print(f"[Sync] Error finding profile by phone {phone}: {e}")
         return None
 
+    def lookup_customer_by_phone(self, phone):
+        """Helper returning (found: bool, name: str | None, profile_id: str | None)."""
+        p = self.find_profile_by_phone(phone)
+        if p:
+            return True, p.get("full_name"), p.get("id")
+        return False, None, None
+
     def push_pending_bills(self):
         """Pushes pending local bills to cloud database."""
         if not self.is_configured():
@@ -220,5 +227,40 @@ class SupabaseSyncService:
         except Exception as e:
             print(f"[Sync] Error pulling products: {e}")
             return 0
+
+    def find_profile_by_phone(self, phone_str: str):
+        """
+        Query Supabase profiles table for customer with matching phone number.
+        Returns dict with profile or None.
+        """
+        if not self.is_configured:
+            return None
+        try:
+            digits = "".join(filter(str.isdigit, str(phone_str)))
+            if not digits:
+                return None
+            clean_10 = digits[-10:]
+            endpoint = f"{self.url}/rest/v1/profiles?or=(phone.ilike.*{clean_10}*)&select=id,full_name,phone&limit=1"
+            res = requests.get(endpoint, headers=self._get_headers(), timeout=4)
+            if res.status_code == 200:
+                data = res.json()
+                if data and len(data) > 0:
+                    return data[0]
+            return None
+        except Exception as e:
+            print(f"[Sync] Customer lookup failed: {e}")
+            return None
+
+    def lookup_customer_by_phone(self, phone_str: str):
+        """
+        Helper returning (found_bool, name_str, profile_id).
+        """
+        profile = self.find_profile_by_phone(phone_str)
+        if profile:
+            digits = "".join(filter(str.isdigit, str(phone_str)))[-4:]
+            name = profile.get("full_name") or f"Customer ({digits})"
+            return True, name, profile.get("id")
+        digits = "".join(filter(str.isdigit, str(phone_str)))[-4:]
+        return False, f"Customer ({digits})" if digits else "Walk-in Customer", None
 
 supabase_sync = SupabaseSyncService()

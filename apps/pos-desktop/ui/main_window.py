@@ -45,9 +45,7 @@ class PosMainWindow(QMainWindow):
         self.init_hardware()
         self.init_sync()
         self.setup_shortcuts()
-
-        # Prompt customer phone before starting first bill (Enter skips immediately)
-        QTimer.singleShot(200, self.prompt_customer_phone)
+        QTimer.singleShot(150, self.prompt_customer_phone)
 
     def init_ui(self):
         root_widget = QWidget()
@@ -67,7 +65,7 @@ class PosMainWindow(QMainWindow):
         brand_col = QVBoxLayout()
         brand_col.setSpacing(0)
         store_name = config.get("store", "name", "Veggies Fresh Market")
-        lbl_title = QLabel(f"🥕 {store_name}")
+        lbl_title = QLabel(store_name)
         lbl_title.setObjectName("brandTitle")
         lbl_sub = QLabel("POS Checkout Counter • Superfast Weigh & Bill")
         lbl_sub.setObjectName("brandSubtitle")
@@ -87,35 +85,35 @@ class PosMainWindow(QMainWindow):
         h_layout.addWidget(self.clock_lbl)
 
         # Cashier Tag
-        self.cashier_lbl = QLabel(f"👤 {self.cashier_name}")
+        self.cashier_lbl = QLabel(f"Cashier: {self.cashier_name}")
         self.cashier_lbl.setObjectName("cashierBadge")
         h_layout.addWidget(self.cashier_lbl)
 
         # Network / Cloud Sync status badge
-        self.status_badge = QLabel("● Online")
+        self.status_badge = QLabel("• Online")
         self.status_badge.setObjectName("statusBadgeOnline")
         h_layout.addWidget(self.status_badge)
 
         # Sync button
-        sync_btn = QPushButton("🔄 Sync Cloud")
+        sync_btn = QPushButton("Sync Cloud")
         sync_btn.setProperty("class", "headerActionBtn")
         sync_btn.clicked.connect(self.on_manual_sync)
         h_layout.addWidget(sync_btn)
 
         # Daily Sales Summary button
-        daily_btn = QPushButton("📊 Day Stats")
+        daily_btn = QPushButton("Day Summary")
         daily_btn.setProperty("class", "headerActionBtn")
         daily_btn.clicked.connect(self.show_daily_stats)
         h_layout.addWidget(daily_btn)
 
         # Past Bills / History button
-        past_btn = QPushButton("📜 Past Bills (F6)")
+        past_btn = QPushButton("Past Bills (F6)")
         past_btn.setProperty("class", "headerActionBtn")
         past_btn.clicked.connect(self.open_past_bills)
         h_layout.addWidget(past_btn)
 
         # Settings button
-        settings_btn = QPushButton("⚙️")
+        settings_btn = QPushButton("Settings")
         settings_btn.setProperty("class", "headerActionBtn")
         settings_btn.clicked.connect(self.open_settings)
         h_layout.addWidget(settings_btn)
@@ -124,7 +122,6 @@ class PosMainWindow(QMainWindow):
 
         # 2. Top Cockpit: Fast Item Search & Speed Keys (Left) + Digital Scale & Weighing (Right)
         top_section = QWidget()
-        top_section.setMaximumHeight(135)
         top_layout = QHBoxLayout(top_section)
         top_layout.setContentsMargins(14, 6, 14, 4)
         top_layout.setSpacing(10)
@@ -143,7 +140,7 @@ class PosMainWindow(QMainWindow):
 
         root_layout.addWidget(top_section, 0)
 
-        # 3. Center & Bottom: Full-Width GoFrugal-Style Billed Items Table (Stretches to fill entire window)
+        # 3. Center & Bottom: Full-Width Billed Items Table
         center_widget = QWidget()
         center_layout = QVBoxLayout(center_widget)
         center_layout.setContentsMargins(14, 2, 14, 8)
@@ -155,6 +152,7 @@ class PosMainWindow(QMainWindow):
         self.cart_widget.hold_requested.connect(self.on_hold_bill)
         self.cart_widget.recall_requested.connect(self.on_recall_bill)
         self.cart_widget.discount_requested.connect(self.on_quick_discount)
+        self.cart_widget.customer_changed.connect(self.on_customer_changed)
         self.cart_widget.customer_clicked.connect(self.prompt_customer_phone)
         center_layout.addWidget(self.cart_widget, 1)
 
@@ -263,13 +261,17 @@ class PosMainWindow(QMainWindow):
                 self.on_product_selected(prod)
 
     def prompt_customer_phone(self):
-        """Prompt cashier for customer phone number or skip as walk-in with Enter."""
+        """Show customer mobile popup dialog."""
         dlg = CustomerPhoneDialog(self, initial_phone=self.active_customer.get("phone") or "")
         if dlg.exec():
-            cust = dlg.get_customer()
+            cust = dlg.get_customer_data()
             self.active_customer = cust
             self.cart_widget.set_customer(cust)
-            self.fast_entry_widget.search_input.setFocus()
+        self.fast_entry_widget.search_input.setFocus()
+        self.fast_entry_widget.search_input.selectAll()
+
+    def on_customer_changed(self, cust):
+        self.active_customer = cust
 
     def focus_search(self):
         self.fast_entry_widget.search_input.setFocus()
@@ -400,10 +402,9 @@ class PosMainWindow(QMainWindow):
             }
             self.cart_widget.set_customer(self.active_customer)
             self.fast_entry_widget.set_active_product(None)
-            self.fast_entry_widget.search_input.setFocus()
 
-            # Automatically ask for next customer's phone number
-            QTimer.singleShot(350, self.prompt_customer_phone)
+            # Prompt customer popup for next customer
+            QTimer.singleShot(250, self.prompt_customer_phone)
 
         except Exception as e:
             QMessageBox.critical(self, "Checkout Error", f"Failed to finalize bill: {e}")
@@ -441,7 +442,7 @@ class PosMainWindow(QMainWindow):
     def show_daily_stats(self):
         stats = PosRepository.get_today_summary()
         msg = f"""
-        <b>📅 Today's Counter Sales Summary</b><br><br>
+        <b>Today's Counter Sales Summary</b><br><br>
         • Total Bills Generated: <b>{stats['bill_count']}</b><br>
         • Total Revenue: <b>₹ {stats['total_sales']:.2f}</b><br>
         • Cash Collections: <b>₹ {stats['cash_sales']:.2f}</b><br>
@@ -488,15 +489,16 @@ class PosMainWindow(QMainWindow):
             f"Bill {bill.get('bill_no')} loaded into cart! Double-click any row to edit Qty, or add/remove items.",
             7000
         )
+        self.fast_entry_widget.search_input.setFocus()
 
     def show_shortcuts_help(self):
         shortcuts_text = """
-        <b>⚡ Keyboard Shortcuts for Fast Billing:</b><br><br>
+        <b>Keyboard Shortcuts for Fast Billing:</b><br><br>
         • <b>F1</b> - View Help & Shortcuts<br>
         • <b>F2</b> - Focus Search & PLU Input Box<br>
         • <b>F3</b> - Tare Scale (Set zero with container)<br>
         • <b>F4</b> - Zero Scale (Reset zero offset)<br>
-        • <b>F5</b> - Customer Phone Entry (Enter to skip / Walk-in)<br>
+        • <b>F5</b> - Customer Mobile Entry<br>
         • <b>F6</b> - Past Bills History & Reprint / Recall<br>
         • <b>F7</b> - Hold Current Bill (Park cart)<br>
         • <b>F8</b> - Recall Parked Bill<br>
@@ -513,7 +515,7 @@ class PosMainWindow(QMainWindow):
         if dlg.exec():
             # Refresh products and store title
             store_name = config.get("store", "name", "Veggies Store Malleswaram")
-            self.findChild(QLabel, "brandTitle").setText(f"🥕 {store_name}")
+            self.findChild(QLabel, "brandTitle").setText(store_name)
             self.fast_entry_widget.load_products()
 
     def closeEvent(self, event):

@@ -19,13 +19,13 @@ class CatalogDialog(QDialog):
 
         # Header
         header = QHBoxLayout()
-        lbl = QLabel("📦 Full Product Catalog")
-        lbl.setStyleSheet("font-size: 16px; font-weight: 800; color: #1E293B;")
+        lbl = QLabel("Product Catalog")
+        lbl.setStyleSheet("font-size: 16px; font-weight: 700; color: #0F172A;")
         header.addWidget(lbl)
         header.addStretch()
 
-        close_btn = QPushButton("✕ Close (Esc)")
-        close_btn.setStyleSheet("padding: 6px 14px; background-color: #F1F5F9; border-radius: 6px; font-weight: bold;")
+        close_btn = QPushButton("Close (Esc)")
+        close_btn.setStyleSheet("padding: 6px 14px; background-color: #F1F5F9; color: #475569; border: 1px solid #CBD5E1; border-radius: 6px; font-weight: 600;")
         close_btn.clicked.connect(self.reject)
         header.addWidget(close_btn)
         layout.addLayout(header)

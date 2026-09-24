@@ -21,7 +21,7 @@ class PastBillsDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("📜 Past Bills History & Reprint")
+        self.setWindowTitle("Past Bills History & Reprint")
         self.setMinimumWidth(880)
         self.setMinimumHeight(560)
         self.bills = []
@@ -37,14 +37,14 @@ class PastBillsDialog(QDialog):
 
         # Header Row
         hdr_row = QHBoxLayout()
-        title = QLabel("📜 Past Bills & Transactions")
-        title.setStyleSheet("font-size: 17px; font-weight: 900; color: #0F172A;")
+        title = QLabel("Past Bills & Transactions")
+        title.setStyleSheet("font-size: 16px; font-weight: 700; color: #0F172A;")
         hdr_row.addWidget(title)
         hdr_row.addStretch()
 
         # Search box
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("🔍 Search by Bill No or Customer Phone...")
+        self.search_input.setPlaceholderText("Search by Bill No or Customer Phone...")
         self.search_input.setStyleSheet("""
             QLineEdit {
                 border: 1px solid #CBD5E1;
@@ -55,7 +55,7 @@ class PastBillsDialog(QDialog):
                 background-color: #FFFFFF;
             }
             QLineEdit:focus {
-                border: 2px solid #16A34A;
+                border: 1px solid #059669;
             }
         """)
         self.search_input.textChanged.connect(self.filter_bills)
@@ -158,7 +158,7 @@ class PastBillsDialog(QDialog):
         actions_box = QHBoxLayout()
         actions_box.setSpacing(8)
 
-        self.reprint_btn = QPushButton("🧾 View / Reprint Receipt")
+        self.reprint_btn = QPushButton("Reprint Receipt")
         self.reprint_btn.setEnabled(False)
         self.reprint_btn.setStyleSheet("""
             QPushButton {
@@ -167,7 +167,7 @@ class PastBillsDialog(QDialog):
                 border: 1px solid #CBD5E1;
                 border-radius: 6px;
                 padding: 8px 12px;
-                font-weight: 800;
+                font-weight: 600;
                 font-size: 12px;
             }
             QPushButton:hover { background-color: #E2E8F0; }
@@ -176,19 +176,19 @@ class PastBillsDialog(QDialog):
         self.reprint_btn.clicked.connect(self.reprint_bill)
         actions_box.addWidget(self.reprint_btn)
 
-        self.load_cart_btn = QPushButton("🔄 Load into Cart / Re-bill")
+        self.load_cart_btn = QPushButton("Load into Cart / Re-bill")
         self.load_cart_btn.setEnabled(False)
         self.load_cart_btn.setStyleSheet("""
             QPushButton {
-                background-color: #16A34A;
+                background-color: #059669;
                 color: #FFFFFF;
                 border: none;
                 border-radius: 6px;
                 padding: 8px 14px;
-                font-weight: 900;
+                font-weight: 700;
                 font-size: 12px;
             }
-            QPushButton:hover { background-color: #15803D; }
+            QPushButton:hover { background-color: #047857; }
             QPushButton:disabled { background-color: #94A3B8; }
         """)
         self.load_cart_btn.clicked.connect(self.recall_to_cart)

@@ -23,8 +23,8 @@ class VirtualReceiptDialog(QDialog):
         layout.setSpacing(15)
 
         # Header Info
-        title = QLabel("🧾 Receipt Generated Successfully")
-        title.setStyleSheet("font-size: 15px; font-weight: bold; color: #1E7D32;")
+        title = QLabel("Receipt Preview")
+        title.setStyleSheet("font-size: 15px; font-weight: 700; color: #065F46;")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
 
@@ -37,7 +37,7 @@ class VirtualReceiptDialog(QDialog):
             QTextEdit {
                 background-color: #FAF9F5;
                 color: #1A1A1A;
-                border: 2px dashed #D1D5DB;
+                border: 1px dashed #CBD5E1;
                 border-radius: 8px;
                 padding: 12px;
                 line-height: 1.3;
@@ -49,13 +49,13 @@ class VirtualReceiptDialog(QDialog):
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(10)
 
-        copy_btn = QPushButton("📋 Copy Text")
-        copy_btn.setStyleSheet("padding: 8px 16px; background-color: #E2E8F0; border-radius: 6px; font-weight: bold;")
+        copy_btn = QPushButton("Copy Text")
+        copy_btn.setStyleSheet("padding: 8px 16px; background-color: #F1F5F9; color: #475569; border: 1px solid #CBD5E1; border-radius: 6px; font-weight: 600;")
         copy_btn.clicked.connect(self.copy_to_clipboard)
         btn_layout.addWidget(copy_btn)
 
         close_btn = QPushButton("Done (Esc / Enter)")
-        close_btn.setStyleSheet("padding: 8px 20px; background-color: #1E7D32; color: white; border-radius: 6px; font-weight: bold;")
+        close_btn.setStyleSheet("padding: 8px 20px; background-color: #059669; color: white; border-radius: 6px; font-weight: 700; border: none;")
         close_btn.setDefault(True)
         close_btn.clicked.connect(self.accept)
         btn_layout.addWidget(close_btn)

@@ -25,8 +25,8 @@ class SettingsDialog(QDialog):
         tabs = QTabWidget()
         tabs.setStyleSheet("""
             QTabWidget::pane { border: 1px solid #E2E8F0; border-radius: 8px; background: white; }
-            QTabBar::tab { padding: 8px 20px; font-weight: bold; font-size: 13px; color: #475569; background: #F8FAFC; border: 1px solid #E2E8F0; border-bottom: none; border-top-left-radius: 6px; border-top-right-radius: 6px; margin-right: 4px; }
-            QTabBar::tab:selected { background: #16A34A; color: white; border-color: #16A34A; }
+            QTabBar::tab { padding: 8px 20px; font-weight: 600; font-size: 12px; color: #475569; background: #F8FAFC; border: 1px solid #E2E8F0; border-bottom: none; border-top-left-radius: 6px; border-top-right-radius: 6px; margin-right: 4px; }
+            QTabBar::tab:selected { background: #059669; color: white; border-color: #059669; }
         """)
 
         # TAB 1: HARDWARE (Scale & Printer)
@@ -35,7 +35,7 @@ class SettingsDialog(QDialog):
         hw_layout.setSpacing(12)
 
         # Scale Section
-        scale_box = QGroupBox("⚖️ Digital Weighing Scale (RS-232 / USB Serial)")
+        scale_box = QGroupBox("Digital Weighing Scale (RS-232 / USB Serial)")
         scale_form = QFormLayout(scale_box)
 
         self.scale_sim_check = QCheckBox("Enable Virtual Scale Simulator (Dev / Offline Mode)")
@@ -56,7 +56,7 @@ class SettingsDialog(QDialog):
         hw_layout.addWidget(scale_box)
 
         # Printer Section
-        print_box = QGroupBox("🖨️ Thermal Receipt Printer (ESC/POS)")
+        print_box = QGroupBox("Thermal Receipt Printer (ESC/POS)")
         print_form = QFormLayout(print_box)
 
         self.print_type_combo = QComboBox()

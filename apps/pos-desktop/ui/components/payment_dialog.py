@@ -106,7 +106,7 @@ class PaymentDialog(QDialog):
         ch_layout.addWidget(self.lbl_change)
         c_layout.addWidget(change_frame)
 
-        self.tabs.addTab(cash_tab, "💵 CASH")
+        self.tabs.addTab(cash_tab, "Cash")
 
         # Tab B: UPI / QR
         upi_tab = QWidget()
@@ -127,7 +127,7 @@ class PaymentDialog(QDialog):
         self.render_upi_qr()
         u_layout.addWidget(self.qr_label)
 
-        self.tabs.addTab(upi_tab, "📱 UPI / QR")
+        self.tabs.addTab(upi_tab, "UPI / QR")
 
         # Tab C: CARD
         card_tab = QWidget()
@@ -142,7 +142,7 @@ class PaymentDialog(QDialog):
         self.card_ref_input.setPlaceholderText("Enter card approval / invoice code (Optional)")
         card_layout.addWidget(self.card_ref_input)
         card_layout.addStretch()
-        self.tabs.addTab(card_tab, "💳 CARD")
+        self.tabs.addTab(card_tab, "Card")
 
         self.tabs.currentChanged.connect(self.on_tab_changed)
         layout.addWidget(self.tabs)
@@ -152,12 +152,12 @@ class PaymentDialog(QDialog):
         btn_row.setSpacing(10)
 
         cancel_btn = QPushButton("Cancel (Esc)")
-        cancel_btn.setStyleSheet("padding: 10px 16px; background-color: #E2E8F0; font-weight: bold; border-radius: 8px;")
+        cancel_btn.setStyleSheet("padding: 10px 16px; background-color: #F1F5F9; color: #475569; border: 1px solid #CBD5E1; font-weight: 600; border-radius: 6px;")
         cancel_btn.clicked.connect(self.reject)
         btn_row.addWidget(cancel_btn)
 
-        self.confirm_btn = QPushButton("🖨️ PRINT RECEIPT & COMPLETE (Enter)")
-        self.confirm_btn.setStyleSheet("padding: 12px 20px; background-color: #16A34A; color: white; font-weight: 900; font-size: 14px; border-radius: 8px;")
+        self.confirm_btn = QPushButton("PRINT RECEIPT & COMPLETE (Enter)")
+        self.confirm_btn.setStyleSheet("padding: 12px 20px; background-color: #059669; color: white; font-weight: 700; font-size: 13px; letter-spacing: 0.3px; border-radius: 6px; border: none;")
         self.confirm_btn.setDefault(True)
         self.confirm_btn.clicked.connect(self.on_confirm)
         btn_row.addWidget(self.confirm_btn, 1)

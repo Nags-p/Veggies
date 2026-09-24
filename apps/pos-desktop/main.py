@@ -22,8 +22,11 @@ def main():
     # 2. Setup QApplication with high-DPI support
     app = QApplication(sys.argv)
     app.setApplicationName("Veggies POS")
-    app.setApplicationDisplayName("Veggies - Fresh Vegetable & Fruit Retail POS")
-    app.setFont(QFont("Segoe UI", 10))
+    app.setApplicationDisplayName("Veggies Retail POS")
+    font = QFont("Segoe UI", 10)
+    font.setFamilies(["Segoe UI Variable Text", "Segoe UI", "Inter", "sans-serif"])
+    font.setStyleStrategy(QFont.StyleStrategy.PreferAntialias)
+    app.setFont(font)
 
     # 3. Apply custom theme
     app.setStyleSheet(APP_STYLE)

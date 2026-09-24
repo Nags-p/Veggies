@@ -133,24 +133,25 @@ class WeightDisplayWidget(QWidget):
         row2.addWidget(tot_box)
 
         # Prominent Add to Bill Button
-        self.add_btn = QPushButton("➕ ADD TO BILL (Enter)")
+        self.add_btn = QPushButton("ADD TO BILL (Enter)")
         self.add_btn.setObjectName("addScaleItemBtn")
         self.add_btn.setStyleSheet("""
             #addScaleItemBtn {
-                background-color: #16A34A;
+                background-color: #059669;
                 color: #FFFFFF;
                 font-size: 13px;
-                font-weight: 900;
+                font-weight: 700;
+                letter-spacing: 0.3px;
                 border-radius: 6px;
                 padding: 6px 14px;
                 min-height: 38px;
                 border: none;
             }
             #addScaleItemBtn:hover {
-                background-color: #15803D;
+                background-color: #047857;
             }
             #addScaleItemBtn:pressed {
-                background-color: #166534;
+                background-color: #065F46;
             }
         """)
         self.add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -163,18 +164,18 @@ class WeightDisplayWidget(QWidget):
         if self.is_simulator:
             sim_row = QHBoxLayout()
             sim_row.setSpacing(4)
-            sim_header = QLabel("⚡ Sim:")
-            sim_header.setStyleSheet("color: #D97706; font-size: 10px; font-weight: 800;")
+            sim_header = QLabel("Sim:")
+            sim_header.setStyleSheet("color: #D97706; font-size: 10px; font-weight: 700;")
             sim_row.addWidget(sim_header)
 
             for wt_label, wt_val in [("+100g", 0.100), ("+250g", 0.250), ("+500g", 0.500), ("+1kg", 1.000)]:
                 b = QPushButton(wt_label)
-                b.setStyleSheet("background-color: #FFFFFF; color: #1E293B; border: 1px solid #CBD5E1; border-radius: 4px; padding: 2px 6px; font-size: 10px; font-weight: 700;")
+                b.setStyleSheet("background-color: #FFFFFF; color: #1E293B; border: 1px solid #CBD5E1; border-radius: 4px; padding: 2px 6px; font-size: 10px; font-weight: 600;")
                 b.clicked.connect(lambda _, v=wt_val: self.add_sim_weight(v))
                 sim_row.addWidget(b)
 
             clear_sim = QPushButton("Clear")
-            clear_sim.setStyleSheet("background-color: #FEE2E2; color: #DC2626; border: 1px solid #FECACA; border-radius: 4px; padding: 2px 6px; font-size: 10px; font-weight: 700;")
+            clear_sim.setStyleSheet("background-color: #FEE2E2; color: #DC2626; border: 1px solid #FECACA; border-radius: 4px; padding: 2px 6px; font-size: 10px; font-weight: 600;")
             clear_sim.clicked.connect(self.clear_sim_weight)
             sim_row.addWidget(clear_sim)
             sim_row.addStretch()

@@ -50,33 +50,39 @@ class FastEntryBarWidget(QWidget):
 
         self.search_input = QLineEdit()
         self.search_input.setObjectName("fastSearchInput")
-        self.search_input.setPlaceholderText("🔍 Scan Barcode / Type PLU (101, 102...) or Item Name (F2)...")
-        self.search_input.setFont(QFont("Segoe UI", 12, QFont.Weight.DemiBold))
+        self.search_input.setPlaceholderText("Scan Barcode / Type PLU or Item Name (F2)...")
+        self.search_input.setFont(QFont("Segoe UI", 11, QFont.Weight.Medium))
         self.search_input.setStyleSheet("""
             #fastSearchInput {
                 background-color: #F8FAFC;
-                border: 2px solid #CBD5E1;
+                border: 1px solid #CBD5E1;
                 border-radius: 6px;
-                padding: 6px 10px;
+                padding: 6px 12px;
                 color: #0F172A;
             }
             #fastSearchInput:focus {
                 background-color: #FFFFFF;
-                border-color: #16A34A;
+                border-color: #059669;
             }
         """)
         self.search_input.returnPressed.connect(self.on_search_enter)
         row1.addWidget(self.search_input, 1)
 
-        self.catalog_btn = QPushButton("📋 All Items (F10)")
+        self.catalog_btn = QPushButton("Catalog (F10)")
         self.catalog_btn.setStyleSheet("""
-            background-color: #F1F5F9;
-            color: #334155;
-            border: 1px solid #CBD5E1;
-            border-radius: 6px;
-            padding: 6px 12px;
-            font-weight: 700;
-            font-size: 11px;
+            QPushButton {
+                background-color: #F1F5F9;
+                color: #334155;
+                border: 1px solid #CBD5E1;
+                border-radius: 6px;
+                padding: 6px 12px;
+                font-weight: 600;
+                font-size: 11px;
+            }
+            QPushButton:hover {
+                background-color: #E2E8F0;
+                color: #0F172A;
+            }
         """)
         self.catalog_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.catalog_btn.clicked.connect(self.open_catalog_requested.emit)
@@ -89,21 +95,20 @@ class FastEntryBarWidget(QWidget):
         self.speed_keys_layout.setSpacing(6)
         frame_layout.addLayout(self.speed_keys_layout)
 
-        # Row 3: Active Item Status Strip (Fixed 24px height - never expands)
+        # Row 3: Active Item Status Strip
         self.status_strip = QFrame()
         self.status_strip.setFixedHeight(24)
-        self.status_strip.setStyleSheet("background-color: #F8FAFC; border-radius: 4px; padding: 1px 6px;")
+        self.status_strip.setStyleSheet("background-color: #F8FAFC; border-radius: 4px; padding: 1px 8px;")
         strip_layout = QHBoxLayout(self.status_strip)
         strip_layout.setContentsMargins(6, 1, 6, 1)
 
-        self.status_label = QLabel("💡 Tip: Type PLU number or click a quick vegetable button to weigh")
-        self.status_label.setStyleSheet("color: #64748B; font-size: 11px; font-weight: 600;")
+        self.status_label = QLabel("Tip: Type PLU or select a quick item to weigh")
+        self.status_label.setStyleSheet("color: #64748B; font-size: 11px; font-weight: 500;")
         strip_layout.addWidget(self.status_label)
 
         frame_layout.addWidget(self.status_strip)
 
         layout.addWidget(outer_frame)
-        self.setMaximumHeight(130)
 
     def load_products(self):
         self.products = PosRepository.get_all_products()
@@ -177,24 +182,24 @@ class FastEntryBarWidget(QWidget):
 
         # Popular retail items to feature as speed keys
         fav_keywords = [
-            ("🍅 Tomato", "Tomato"),
-            ("🥔 Potato", "Potato"),
-            ("🧅 Onion", "Onion"),
-            ("🥕 Carrot", "Carrot"),
-            ("🍌 Banana", "Banana"),
-            ("🍎 Apple", "Apple"),
-            ("🥬 Palak", "Palak"),
-            ("🌿 Coriander", "Coriander"),
-            ("🌶️ Chilli", "Chilli"),
-            ("🥒 Cucumber", "Cucumber")
+            ("Tomato", "Tomato"),
+            ("Potato", "Potato"),
+            ("Onion", "Onion"),
+            ("Carrot", "Carrot"),
+            ("Banana", "Banana"),
+            ("Apple", "Apple"),
+            ("Palak", "Palak"),
+            ("Coriander", "Coriander"),
+            ("Chilli", "Chilli"),
+            ("Cucumber", "Cucumber")
         ]
 
         count = 0
-        for icon_label, kw in fav_keywords:
+        for label_text, kw in fav_keywords:
             match = next((p for p in self.products if kw.lower() in p["name"].lower()), None)
             if match and count < 8:
                 plu_text = f" [{match.get('plu', '')}]" if match.get('plu') else ""
-                btn = QPushButton(f"{icon_label}{plu_text}")
+                btn = QPushButton(f"{label_text}{plu_text}")
                 btn.setStyleSheet("""
                     QPushButton {
                         background-color: #FFFFFF;
@@ -203,12 +208,12 @@ class FastEntryBarWidget(QWidget):
                         border-radius: 6px;
                         padding: 5px 10px;
                         font-size: 11px;
-                        font-weight: 700;
+                        font-weight: 600;
                     }
                     QPushButton:hover {
-                        background-color: #F0FDF4;
-                        border-color: #16A34A;
-                        color: #15803D;
+                        background-color: #ECFDF5;
+                        border-color: #059669;
+                        color: #047857;
                     }
                     QPushButton:pressed {
                         background-color: #DCFCE7;
@@ -228,13 +233,13 @@ class FastEntryBarWidget(QWidget):
     def set_active_product(self, product):
         self.active_product = product
         if product:
-            self.status_label.setText(f"👉 Active on Scale: <b>{product['name']}</b> • <b>₹{product['price']:.2f}/{product.get('unit', 'kg')}</b> (PLU: {product.get('plu', '-')})")
-            self.status_label.setStyleSheet("color: #15803D; font-size: 11px; font-weight: 700;")
-            self.status_strip.setStyleSheet("background-color: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 4px; padding: 1px 6px;")
+            self.status_label.setText(f"Active on Scale: <b>{product['name']}</b> • ₹{product['price']:.2f}/{product.get('unit', 'kg')} (PLU: {product.get('plu', '-')})")
+            self.status_label.setStyleSheet("color: #047857; font-size: 11px; font-weight: 600;")
+            self.status_strip.setStyleSheet("background-color: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 4px; padding: 1px 8px;")
         else:
-            self.status_label.setText("💡 Tip: Type PLU number or click a quick vegetable button to weigh")
-            self.status_label.setStyleSheet("color: #64748B; font-size: 11px; font-weight: 600;")
-            self.status_strip.setStyleSheet("background-color: #F8FAFC; border-radius: 4px; padding: 1px 6px;")
+            self.status_label.setText("Tip: Type PLU or select a quick item to weigh")
+            self.status_label.setStyleSheet("color: #64748B; font-size: 11px; font-weight: 500;")
+            self.status_strip.setStyleSheet("background-color: #F8FAFC; border-radius: 4px; padding: 1px 8px;")
 
     def on_completer_index_activated(self, index):
         # Directly retrieve the exact product object attached to this item

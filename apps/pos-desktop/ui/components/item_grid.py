@@ -25,13 +25,13 @@ class ItemGridWidget(QWidget):
         # 1. Search Bar & Fast PLU Lookup
         search_row = QHBoxLayout()
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("🔍 Search vegetable, fruit, or type PLU / Barcode (F2)...")
+        self.search_input.setPlaceholderText("Search item or type PLU / Barcode (F2)...")
         self.search_input.textChanged.connect(self.on_search_changed)
         self.search_input.returnPressed.connect(self.on_search_enter)
         search_row.addWidget(self.search_input)
 
         clear_search_btn = QPushButton("Clear")
-        clear_search_btn.setStyleSheet("padding: 8px 14px; background-color: #E2E8F0; border-radius: 6px;")
+        clear_search_btn.setStyleSheet("padding: 7px 14px; background-color: #F1F5F9; color: #475569; border: 1px solid #CBD5E1; border-radius: 6px; font-weight: 600;")
         clear_search_btn.clicked.connect(lambda: self.search_input.clear())
         search_row.addWidget(clear_search_btn)
         layout.addLayout(search_row)
